@@ -132,6 +132,8 @@ mod home_recents_tests;
 #[cfg(test)]
 mod home_tests;
 #[cfg(test)]
+mod home_workspace_tests;
+#[cfg(test)]
 mod host_save_tests;
 #[cfg(test)]
 mod icon_button_size_tests;
@@ -341,6 +343,7 @@ pub use dialogs::sampled_color;
 pub use dialogs::updates_ui;
 pub use dialogs::variables_panel;
 pub use home::home_recents;
+pub use home::home_workspace;
 pub use home::online;
 pub use panels::assets_panel;
 pub use panels::component_panel;

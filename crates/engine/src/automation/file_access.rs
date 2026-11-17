@@ -516,5 +516,38 @@ pub fn create_dir_all(path: impl AsRef<Path>) -> Result<()> {
     std::fs::create_dir_all(allow(path, Access::Write)?).map_err(io(path))
 }
 
+/// Move or rename `from` (a file or a folder) to `to`, on the same volume. Anything already at
+/// `to` is refused, never replaced.
+pub fn rename(from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result<()> {
+    let (from, to) = (from.as_ref(), to.as_ref());
+    let source = allow(from, Access::Write)?;
+    let target = allow(to, Access::Write)?;
+    if std::fs::symlink_metadata(&target).is_ok() {
+        return Err(EngineError::Other(format!("{}: something with that name is already there", to.display())));
+    }
+    std::fs::rename(source, target).map_err(io(from))
+}
+
+/// Move `path` (a file or a folder) to the system's Recycle Bin or Trash, where it can be restored.
+#[cfg(all(not(target_arch = "wasm32"), not(test)))]
+pub fn trash(path: impl AsRef<Path>) -> Result<()> {
+    let path = path.as_ref();
+    trash::delete(allow(path, Access::Write)?).map_err(|e| EngineError::Other(format!("{}: {e}", path.display())))
+}
+
+/// This crate's tests delete outright, so running them doesn't fill the Recycle Bin.
+#[cfg(all(not(target_arch = "wasm32"), test))]
+pub fn trash(path: impl AsRef<Path>) -> Result<()> {
+    let path = path.as_ref();
+    let p = allow(path, Access::Write)?;
+    if std::fs::metadata(&p).map_err(io(path))?.is_dir() { std::fs::remove_dir_all(&p) } else { std::fs::remove_file(&p) }.map_err(io(path))
+}
+
+/// The browser has no files to delete.
+#[cfg(target_arch = "wasm32")]
+pub fn trash(path: impl AsRef<Path>) -> Result<()> {
+    Err(EngineError::Other(format!("{}: no file system in the browser", path.as_ref().display())))
+}
+
 #[cfg(test)]
 mod tests;

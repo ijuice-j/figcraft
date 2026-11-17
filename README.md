@@ -14,6 +14,14 @@ An unofficial fork of [FigCraft](https://github.com/storytold/figcraft) by the A
 - **Asks first.** The first download asks *Allow downloading fonts?*; nothing goes online until
   you allow it.
 - **`font.library` command** lists the same fonts for scripts and agents.
+- **Workspaces.** Organise files as Workspace › Projects › Files on the home screen, like Figma's
+  teams and projects. A workspace is a real folder (each project a subfolder), so it works with
+  Explorer, cloud sync and backups.
+  - New files are saved straight into **Drafts**, and workspace files auto-save.
+  - Projects to create, rename and delete; files to move, rename, star and delete (to the Recycle
+    Bin); several workspaces to switch between.
+  - The editor shows where a file lives (*Workspace / Project*) under its name; click it to go there.
+  - `workspace.*` commands do the same for scripts and agents.
 
 ## Build
 

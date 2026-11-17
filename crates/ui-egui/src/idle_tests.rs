@@ -517,6 +517,32 @@ fn auto_save_writes_a_changed_file_then_rests() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+#[test]
+fn a_workspace_file_saves_itself_with_auto_save_off() {
+    let root = std::env::temp_dir().join(format!("figcraft-ws-auto-save-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&root);
+    let (mut h, _) = document();
+    h.run("workspace.add", json!({"path": root.to_string_lossy()}));
+    h.run("workspace.newFile", json!({}));
+    assert!(!h.app.session.prefs.auto_save, "the preference is off");
+    let path = h.app.session.ds().unwrap().path.clone().unwrap();
+    h.run("shape.rectangle", json!({"x": 500, "y": 300, "width": 40, "height": 40}));
+    h.frame(vec![]);
+    assert!(h.app.session.ds().unwrap().is_dirty(), "not saved at once");
+    h.time += crate::AUTO_SAVE_SECS + 0.5;
+    let start = Instant::now();
+    while h.app.session.ds().unwrap().is_dirty() {
+        assert!(start.elapsed() < Duration::from_secs(20), "saved by itself");
+        h.frame(vec![]);
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    let mut t = Session::empty();
+    t.execute("file.open", &json!({"path": path})).unwrap();
+    let ds = t.ds().unwrap();
+    assert!(ds.doc.page_content_bounds(ds.page).is_some(), "the rectangle is in the file");
+    let _ = std::fs::remove_dir_all(&root);
+}
+
 /// Asserts a hidden logic tick runs background work and advances the autosave deadline
 /// without counting a UI frame, and is idempotent at the same time.
 #[test]

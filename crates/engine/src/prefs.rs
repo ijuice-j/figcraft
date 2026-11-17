@@ -123,6 +123,13 @@ pub struct Prefs {
     /// for updates by themselves. A file naming another one doesn't contact its server (#1097).
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub team_libraries: Vec<String>,
+    /// The workspaces' folders (fork: [`crate::workspace`]), in the order they were added, at most
+    /// [`MAX_WORKSPACES`](crate::workspace::MAX_WORKSPACES).
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub workspaces: Vec<String>,
+    /// The workspace the home screen shows and new files go to (one of [`Self::workspaces`]).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub active_workspace: Option<String>,
 }
 
 /// Recently run actions kept for the Actions palette (newest first).
@@ -165,6 +172,8 @@ impl Default for Prefs {
             board_grid: Default::default(),
             recent_actions: Vec::new(),
             team_libraries: Vec::new(),
+            workspaces: Vec::new(),
+            active_workspace: None,
         }
     }
 }

@@ -16,6 +16,7 @@ use crate::icons::{self, Icon};
 use crate::theme::{ACCENT, Tokens, regular, semibold};
 use crate::widgets;
 pub mod home_recents;
+pub mod home_workspace;
 pub mod online;
 
 /// The section the home screen shows.
@@ -25,6 +26,8 @@ pub enum Section {
     Recents,
     Online,
     Templates,
+    /// The workspace (fork): its Drafts, Starred and projects, chosen in the sidebar.
+    Workspace,
 }
 
 impl Section {
@@ -41,10 +44,14 @@ impl Section {
             Section::Recents => "recents",
             Section::Online => "online",
             Section::Templates => "templates",
+            Section::Workspace => "workspace",
         }
     }
 
     pub fn parse(id: &str) -> Option<Section> {
+        if id == "workspace" && crate::home_workspace::offered() {
+            return Some(Section::Workspace);
+        }
         Section::ALL.into_iter().map(|(section, ..)| section).find(|section| section.id() == id)
     }
 }
@@ -60,6 +67,8 @@ pub struct Home {
     pub kind: Option<Kind>,
     /// The recent files: what is known about each, and the selection.
     pub recents: crate::home_recents::Recents,
+    /// The workspace section: the place shown, its files and dialogs.
+    pub workspace: crate::home_workspace::State,
 }
 
 const SIDEBAR: f32 = 240.0;
@@ -162,6 +171,7 @@ pub fn show(app: &mut FigApp, ui: &mut Ui) {
                     if app.ui.home_view.file_query.trim().is_empty() {
                         match app.ui.home_view.section {
                             Section::Templates => templates(app, ui, &t),
+                            Section::Workspace => crate::home_workspace::section(app, ui, &t),
                             _ => recents(app, ui, &t),
                         }
                     } else {
@@ -172,6 +182,7 @@ pub fn show(app: &mut FigApp, ui: &mut Ui) {
             });
         });
     });
+    crate::home_workspace::dialogs(app, ui.ctx());
     // The whole window is the drop target, not only the canvas.
     crate::drop_overlay(ui.ctx(), ui.ctx().content_rect(), tr("Drop to open"));
 }
@@ -229,6 +240,7 @@ fn sidebar(app: &mut FigApp, ui: &mut Ui, t: &Tokens, left: Rect) {
         }
         y += 34.0;
     }
+    y = crate::home_workspace::sidebar(app, ui, t, left, y + 4.0, left.max.y - 56.0);
     let pref_y = (left.max.y - 44.0).max(y + 12.0);
     if pref_y > y + 12.0 {
         ui.painter().line_segment([pos2(left.min.x + 12.0, pref_y - 6.0), pos2(left.max.x - 12.0, pref_y - 6.0)], Stroke::new(1.0, t.border));
@@ -357,7 +369,7 @@ fn recents(app: &mut FigApp, ui: &mut Ui, t: &Tokens) {
         open = action_card(ui, t, Icon::Page, tr("Open file"), tr("Open .figcraft, .svg or images"));
     });
     if new_file || new_board {
-        app.run(if new_board { "file.newBoard" } else { "file.new" }, json!({}));
+        app.new_file(new_board);
         app.ui.home = false;
     }
     if open {
