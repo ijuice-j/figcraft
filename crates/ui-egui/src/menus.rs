@@ -510,6 +510,17 @@ pub fn popups(app: &mut FigApp, ctx: &egui::Context) {
                 let crop = app.session.doc().ok().is_some_and(|doc| {
                     matches!(app.session.selection().as_slice(), [id] if doc.node(*id).and_then(figcraft_engine::cmd::image::top_image_fill).is_some())
                 });
+                // One frame, component, instance or section can be the file's cover (fork).
+                let cover = app.session.doc().ok().and_then(|doc| match app.session.selection().as_slice() {
+                    [id] => doc.node(*id).filter(|n| figcraft_engine::cover::can_be_thumbnail(&n.kind)).map(|n| {
+                        if figcraft_engine::cover::is_thumbnail(n) {
+                            (tr("Remove thumbnail"), "object.removeThumbnail")
+                        } else {
+                            (tr("Set as thumbnail"), "object.setThumbnail")
+                        }
+                    }),
+                    _ => None,
+                });
                 let copy_link = i18n::command("edit.copyLink", "Copy link to selection");
                 let mut entries: Vec<(&str, &str)> = if has_sel {
                     vec![
@@ -570,6 +581,11 @@ pub fn popups(app: &mut FigApp, ctx: &egui::Context) {
                     && let Some(at) = entries.iter().position(|e| e.1 == "component.create")
                 {
                     entries.insert(at + 1, (label, "component.combineVariants"));
+                }
+                if let Some(entry) = cover
+                    && let Some(at) = entries.iter().position(|e| e.1 == "component.detach")
+                {
+                    entries.insert(at + 1, entry);
                 }
                 if crop && let Some(at) = entries.iter().position(|e| e.1 == "object.mask") {
                     entries.insert(at + 1, (tr("Crop image"), "image.crop"));

@@ -1261,7 +1261,7 @@ fn layers(app: &mut FigApp, ui: &mut Ui) {
                 let name = row_name(n).to_string();
                 // Room left of the lock and eye buttons (the row is wide enough for the whole
                 // name, up to `NAME_ROOM`: a row widened by a deeper name gives no more).
-                let max_w = (rr.max.x - 56.0 - name_x).clamp(20.0, NAME_ROOM);
+                let max_w = (rr.max.x - 56.0 - cover_mark(ui, n, rr, r.center().y) - name_x).clamp(20.0, NAME_ROOM);
                 crate::bidi::paint_name(ui.painter(), pos2(name_x, r.center().y), &name, font, col, max_w);
             }
             let (v, l) = eye_lock(ui, &t, [r, rr], row, n, over && !dev, dev, &mut sweep);
@@ -1447,4 +1447,16 @@ fn breadcrumb(app: &mut FigApp, ui: &mut Ui, t: &Tokens, r: Rect) {
         app.ui.home_view.workspace.place = place;
         app.ui.home_view.workspace.relist();
     }
+}
+
+/// On the file's cover's row (fork): a picture mark left of the padlock, named on hover. The room
+/// it takes from the name (0 on other rows).
+fn cover_mark(ui: &mut Ui, n: &figcraft_doc::Node, rr: Rect, y: f32) -> f32 {
+    if !figcraft_engine::cover::is_thumbnail(n) {
+        return 0.0;
+    }
+    let cr = Rect::from_center_size(pos2(rr.max.x - 60.0, y), vec2(12.0, 12.0));
+    icons::paint(ui.painter(), cr, Icon::Image, crate::theme::canvas_accent(ui.ctx()));
+    ui.interact(cr, ui.scope_id().with(("cover", n.id)), Sense::hover()).on_hover_text(tr("File thumbnail"));
+    20.0
 }

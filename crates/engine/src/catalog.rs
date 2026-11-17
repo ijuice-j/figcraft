@@ -29,6 +29,7 @@ pub static MENU: &[MenuItem] = &[
     // FigCraft's own: boards and starter templates (not counted by `parity`, like the other items
     // of its own listed in `OWN`).
     m!("File", "New from template…", "file.newFromTemplate"),
+    m!("File", "Add cover page", "file.addCoverPage"),
     m!("File", "New window", "window.new"),
     m!("File", "Open…", "file.open"),
     m!("File", "Import from file…", "file.import"),
@@ -155,6 +156,8 @@ pub static MENU: &[MenuItem] = &[
     m!("Object", "Use as mask", "object.mask"),
     m!("Object", "Release mask", "object.releaseMask"),
     m!("Object", "Set as thumbnail", "object.setThumbnail"),
+    // FigCraft's own (in `OWN`): taking a cover back off, and a cover page made in one go.
+    m!("Object", "Remove thumbnail", "object.removeThumbnail"),
     // FigCraft's own (in `OWN`): the way into crop mode that the Design panel also offers.
     m!("Object", "Crop image", "image.crop"),
     m!("Object", SEP, ""),
@@ -302,7 +305,16 @@ pub fn items() -> impl Iterator<Item = &'static MenuItem> {
 }
 
 /// Items of FigCraft's own that the parity count leaves out (as it does the `collab.` ones).
-const OWN: [&str; 6] = ["file.newFromTemplate", "file.newBoard", "help.gettingStarted", "text.missingFonts", "image.crop", "text.directionAuto"];
+const OWN: [&str; 8] = [
+    "file.newFromTemplate",
+    "file.newBoard",
+    "help.gettingStarted",
+    "text.missingFonts",
+    "image.crop",
+    "text.directionAuto",
+    "object.removeThumbnail",
+    "file.addCoverPage",
+];
 
 /// Coverage: (implemented, total, missing ids). `extra` lists ids implemented by the UI layer.
 pub fn parity(extra: &[&str]) -> (usize, usize, Vec<&'static str>) {

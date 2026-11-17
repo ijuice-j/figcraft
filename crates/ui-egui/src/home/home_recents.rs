@@ -243,6 +243,9 @@ fn date(secs: u64) -> String {
     trf("{month} {day}, {year}", &[("month", &name), ("day", &day), ("year", &year)])
 }
 
+/// A card's picture: page colour, texture, opacity while it fades in, and whether it is a cover.
+type Picture = (Option<Color32>, Option<egui::TextureHandle>, f32, bool);
+
 /// What a file on disk says about itself.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Stat {
@@ -323,6 +326,8 @@ struct Ready {
     page: Option<Color32>,
     texture: Option<egui::TextureHandle>,
     kind: figcraft_doc::FileKind,
+    /// The picture is the file's chosen cover: it fills the card.
+    cover: bool,
     /// When it came in (for its fade).
     arrived: f64,
 }
@@ -491,7 +496,7 @@ impl Recents {
                         let page = preview.page.map(|[r, g, b, a]| crate::theme::c32(figcraft_color::Color { r, g, b, a }));
                         // A changed file's new picture shows at once; a first one fades in.
                         let arrived = if k.shown.is_some() { f64::NEG_INFINITY } else { time };
-                        k.shown = Some(Ready { modified, page, texture, kind: preview.kind, arrived });
+                        k.shown = Some(Ready { modified, page, texture, kind: preview.kind, cover: preview.cover, arrived });
                         k.wanted = None;
                     }
                 }
@@ -512,9 +517,9 @@ impl Recents {
     }
 
     /// The picture for `path` (asking for it when the card is in view and the file has changed
-    /// since): its page colour, its texture and its opacity while it fades in. `None` while there is
-    /// nothing to show yet, and for a file that isn't there.
-    fn picture(&mut self, path: &str, visible: bool, time: f64) -> Option<(Option<Color32>, Option<egui::TextureHandle>, f32)> {
+    /// since): its page colour, its texture, its opacity while it fades in and whether it is the
+    /// file's cover. `None` while there is nothing to show yet, and for a file that isn't there.
+    fn picture(&mut self, path: &str, visible: bool, time: f64) -> Option<Picture> {
         let k = self.files.get_mut(path)?;
         let stat = k.stat.filter(|s| s.exists)?;
         let current = k.shown.as_ref().is_some_and(|r| r.modified == stat.modified) || k.wanted == Some(stat.modified);
@@ -526,7 +531,7 @@ impl Recents {
             k.wanted = Some(stat.modified);
         }
         let r = k.shown.as_ref()?;
-        Some((r.page, r.texture.clone(), (((time - r.arrived) / FADE_SECS) as f32).clamp(0.0, 1.0)))
+        Some((r.page, r.texture.clone(), (((time - r.arrived) / FADE_SECS) as f32).clamp(0.0, 1.0), r.cover))
     }
 
     /// The files as listed, with what is known about them.
@@ -901,7 +906,7 @@ fn grid(ui: &mut Ui, t: &Tokens, recents: &mut Recents, files: &[Shown], menu: M
                 skeleton(ui, t, rect, picture_h);
                 continue;
             };
-            let alpha = picture.as_ref().map_or(1.0, |(_, _, a)| if reduce_motion { 1.0 } else { *a });
+            let alpha = picture.as_ref().map_or(1.0, |(_, _, a, _)| if reduce_motion { 1.0 } else { *a });
             fading |= alpha < 1.0;
             card(CardPaint { ui, tokens: t, rect, picture_h, response: &resp, selected, file, stat, picture, alpha, now });
         }
@@ -936,7 +941,7 @@ struct CardPaint<'a> {
     selected: bool,
     file: &'a Shown,
     stat: Stat,
-    picture: Option<(Option<Color32>, Option<egui::TextureHandle>, f32)>,
+    picture: Option<Picture>,
     alpha: f32,
     now: u64,
 }
@@ -949,7 +954,14 @@ fn card(paint: CardPaint<'_>) {
     let top = CornerRadius { nw: 7, ne: 7, sw: 0, se: 0 };
     p.rect_filled(area, top, t.canvas);
     match picture {
-        Some((page, texture, _)) if stat.exists && (page.is_some() || texture.is_some()) => {
+        // A chosen cover fills the picture area edge to edge, cropped from its centre.
+        Some((_, Some(texture), _, true)) if stat.exists => {
+            p.add(
+                egui::epaint::RectShape::filled(area, top, Color32::WHITE.gamma_multiply(alpha))
+                    .with_texture(texture.id(), cover_uv(texture.size_vec2(), area.size())),
+            );
+        }
+        Some((page, texture, _, _)) if stat.exists && (page.is_some() || texture.is_some()) => {
             if let Some(page) = page {
                 p.rect_filled(area, top, page.gamma_multiply(alpha));
             }
@@ -981,6 +993,22 @@ fn card(paint: CardPaint<'_>) {
         if resp.has_focus() {
             p.rect_stroke(rect, CornerRadius::same(8), Stroke::new(2.0, t.focus), StrokeKind::Outside);
         }
+    }
+}
+
+/// The part of a picture `texture` big that fills an area `area` big, cropped from its centre
+/// (texture coordinates).
+fn cover_uv(texture: egui::Vec2, area: egui::Vec2) -> Rect {
+    let (tr_, ar) = (texture.x / texture.y.max(1.0), area.x / area.y.max(1.0));
+    if !(tr_.is_finite() && ar.is_finite()) || tr_ <= 0.0 || ar <= 0.0 {
+        return Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0));
+    }
+    if tr_ > ar {
+        let w = ar / tr_;
+        Rect::from_min_max(pos2((1.0 - w) / 2.0, 0.0), pos2((1.0 + w) / 2.0, 1.0))
+    } else {
+        let h = tr_ / ar;
+        Rect::from_min_max(pos2(0.0, (1.0 - h) / 2.0), pos2(1.0, (1.0 + h) / 2.0))
     }
 }
 
@@ -1094,6 +1122,18 @@ mod tests {
 
     /// `date` keeps the exact "Mon D, YYYY" (UTC) output the hand-rolled days-from-civil code
     /// produced. With no catalog loaded the month and format strings pass through in English.
+    #[test]
+    fn a_cover_fills_the_card_cropped_from_its_centre() {
+        let full = Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0));
+        let card = egui::vec2(320.0, 180.0);
+        assert_eq!(cover_uv(egui::vec2(1600.0, 900.0), card), full, "16:9 on 16:9: all of it");
+        let wide = cover_uv(egui::vec2(3200.0, 900.0), card);
+        assert!((wide.min.x - 0.25).abs() < 1e-5 && (wide.max.x - 0.75).abs() < 1e-5 && wide.min.y == 0.0 && wide.max.y == 1.0, "{wide:?}");
+        let tall = cover_uv(egui::vec2(900.0, 900.0), card);
+        assert!(tall.min.x == 0.0 && (tall.height() - 0.5625).abs() < 1e-5 && ((tall.min.y + tall.max.y) / 2.0 - 0.5).abs() < 1e-5, "{tall:?}");
+        assert_eq!(cover_uv(egui::vec2(0.0, 0.0), card), full, "nothing to crop");
+    }
+
     #[test]
     fn date_formats_seconds_since_1970_in_utc() {
         assert_eq!(date(0), "Jan 1, 1970");

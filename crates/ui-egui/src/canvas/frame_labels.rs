@@ -129,7 +129,8 @@ pub fn draw(app: &FigApp, painter: &Painter, t: &Tokens, doc: &Document, id: Nod
             crate::icons::paint(painter, ir, crate::icons::Icon::EyeOff, fg);
         }
         painter.galley(r.min + vec2(8.0 + eye, 4.0), galley, fg);
-        status_badge(painter, n, pos2(r.max.x + 6.0, r.center().y));
+        let after = cover_badge(painter, n, pos2(r.max.x + 6.0, r.center().y));
+        status_badge(painter, n, pos2(after, r.center().y));
         r
     } else {
         let mut x = tl.x;
@@ -142,7 +143,8 @@ pub fn draw(app: &FigApp, painter: &Painter, t: &Tokens, doc: &Document, id: Nod
         let size = galley.size();
         let end = x + size.x;
         painter.galley(pos2(x, tl.y - 16.0), galley, col);
-        status_badge(painter, n, pos2(end + 6.0, tl.y - 9.0));
+        let after = cover_badge(painter, n, pos2(end + 6.0, tl.y - 9.0));
+        status_badge(painter, n, pos2(after, tl.y - 9.0));
         Rect::from_min_max(pos2(tl.x, tl.y - 18.0), pos2(end, tl.y - 16.0 + size.y.max(12.0)))
     };
     turn_since(painter, from, tl, edge.angle);
@@ -155,6 +157,17 @@ pub fn draw(app: &FigApp, painter: &Painter, t: &Tokens, doc: &Document, id: Nod
     }
     let rot = Rot2::from_angle(edge.angle);
     Some([area.left_top(), area.right_top(), area.right_bottom(), area.left_bottom()].map(|p| tl + rot * (p - tl)))
+}
+
+/// For the file's cover (fork): a picture mark in the accent colour at `at` (its left middle).
+/// Where whatever follows it starts.
+fn cover_badge(painter: &Painter, n: &figcraft_doc::Node, at: Pos2) -> f32 {
+    if !figcraft_engine::cover::is_thumbnail(n) {
+        return at.x;
+    }
+    let r = Rect::from_min_size(pos2(at.x, at.y - 6.0), vec2(12.0, 12.0));
+    crate::icons::paint(painter, r, crate::icons::Icon::Image, crate::theme::canvas_accent(painter.ctx()));
+    r.max.x + 6.0
 }
 
 /// The field over a frame's or section's name label being renamed (`UiState::rename_label`, from a
