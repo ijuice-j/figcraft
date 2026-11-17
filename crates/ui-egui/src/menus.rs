@@ -432,7 +432,15 @@ pub fn popups(app: &mut FigApp, ctx: &egui::Context) {
                     for top in TOP_MENUS {
                         if submenu_at(
                             ui,
-                            SubmenuOptions { area: Id::unique(("menu", *top)), key: top, label: tr(top), gap: 12.0, constrain: false, tokens: &t },
+                            SubmenuOptions {
+                                area: Id::unique(("menu", *top)),
+                                key: top,
+                                label: tr(top),
+                                gap: 12.0,
+                                constrain: false,
+                                flush: false,
+                                tokens: &t,
+                            },
                             |ui| menu_level(app, ui, top).then_some(()),
                         )
                         .is_some()

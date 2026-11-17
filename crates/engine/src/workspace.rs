@@ -333,10 +333,17 @@ fn file_target(cmd: &str, s: &Session, file: &str) -> Result<(Workspace, Locatio
     Ok((load(&loc.workspace), loc))
 }
 
-/// Refused while a tab has `path` (or a file in folder `path`) open.
-fn not_open(cmd: &str, s: &Session, path: &Path, what: &str) -> Result<()> {
-    let open = s.docs.iter().filter_map(|d| d.path.as_deref()).any(|p| same_path(Path::new(p), path) || rel_of(path, Path::new(p)).is_some());
-    if open { Err(bad(cmd, format!("{what} is open in a tab: close it first"))) } else { Ok(()) }
+/// Close the tabs that have `path` (or a file in folder `path`) open, so it can go; refused, with
+/// nothing closed, while one of them has unsaved changes.
+fn close_tabs(cmd: &str, s: &mut Session, path: &Path, what: &str) -> Result<()> {
+    let open = |d: &crate::DocState| d.path.as_deref().is_some_and(|p| same_path(Path::new(p), path) || rel_of(path, Path::new(p)).is_some());
+    if s.docs.iter().any(|d| open(d) && d.is_dirty()) {
+        return Err(bad(cmd, format!("{what} has unsaved changes in a tab: save or close it first")));
+    }
+    while let Some(i) = s.docs.iter().rposition(open) {
+        s.execute("file.close", &json!({"index": i, "force": true}))?;
+    }
+    Ok(())
 }
 
 fn workspace_json(ws: &Workspace, active: bool) -> Value {
@@ -491,7 +498,7 @@ fn delete_project(s: &mut Session, p: &Value) -> Result<Value> {
     if dir.file_name().is_some_and(|f| f.to_string_lossy().eq_ignore_ascii_case(DRAFTS)) {
         return Err(bad(CMD, "Drafts can't be deleted"));
     }
-    not_open(CMD, s, &dir, "A file of this project")?;
+    close_tabs(CMD, s, &dir, "A file of this project")?;
     file_access::trash(&dir)?;
     deleted(s, Path::new(&ws.path), &dir);
     Ok(json!({"deleted": path_str(&dir)}))
@@ -572,7 +579,7 @@ fn delete_file(s: &mut Session, p: &Value) -> Result<Value> {
     const CMD: &str = "workspace.deleteFile";
     let file = req_string(CMD, p, "file")?;
     let (_, loc) = file_target(CMD, s, &file)?;
-    not_open(CMD, s, Path::new(&file), "This file")?;
+    close_tabs(CMD, s, Path::new(&file), "This file")?;
     file_access::trash(&file)?;
     deleted(s, Path::new(&loc.workspace), Path::new(&file));
     Ok(json!({"deleted": file}))
@@ -680,7 +687,7 @@ pub fn specs() -> Vec<CommandSpec> {
         spec!(
             "workspace.deleteProject",
             "Delete project",
-            "{project, workspace?}  moves its folder and files to the Recycle Bin / Trash (not Drafts; refused while one of its files is open) → {deleted}",
+            "{project, workspace?}  moves its folder and files to the Recycle Bin / Trash (not Drafts); tabs that have its files open close, unless one has unsaved changes (then nothing happens) → {deleted}",
             false,
             delete_project
         ),
@@ -708,7 +715,7 @@ pub fn specs() -> Vec<CommandSpec> {
         spec!(
             "workspace.deleteFile",
             "Delete workspace file",
-            "{file}  moves it to the Recycle Bin / Trash (refused while it's open in a tab) → {deleted}",
+            "{file}  moves it to the Recycle Bin / Trash; a tab that has it open closes, unless it has unsaved changes (then nothing happens) → {deleted}",
             false,
             delete_file
         ),
