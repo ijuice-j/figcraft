@@ -252,7 +252,7 @@ pub fn tab_bar(app: &mut FigApp, ui: &mut Ui) {
         icons::paint(ui.painter(), Rect::from_center_size(nr.center(), Vec2::splat(BAR_ICON)), Icon::Plus, t.icon);
         if nresp.clicked() {
             pause_present(app);
-            app.run("file.new", json!({}));
+            app.new_file(false);
             app.ui.home = false;
         }
         let theme_r = theme_toggle(app, ui, &t, rect, buttons_w);

@@ -495,6 +495,9 @@ fn every_command_survives_junk_params() {
         // the font index, never used as a path).
         json!({"family": "../../\u{0}Lato"}),
         json!({"family": ["Lato"], "style": 1e308}),
+        // Workspaces: folders, projects, files and names as junk and as paths that climb out.
+        json!({"workspace": "../..", "project": "../../x", "name": "a/b\\c\u{0}", "file": "../x.figcraft", "starred": "yes", "kind": 5}),
+        json!({"workspace": [1], "project": {"x": 1}, "name": ".", "file": 7, "starred": null, "kind": "board"}),
     ];
     for spec in all_commands() {
         if matches!(

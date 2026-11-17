@@ -87,6 +87,7 @@ fn registry() -> &'static Registry {
         list.extend(view::specs());
         list.extend(text::specs());
         list.extend(crate::fonts::specs());
+        list.extend(crate::workspace::specs());
         list.extend(styles::specs());
         list.extend(image::specs());
         list.extend(variables::specs());

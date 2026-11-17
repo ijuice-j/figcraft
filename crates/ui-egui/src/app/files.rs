@@ -139,6 +139,19 @@ impl FigApp {
         false
     }
 
+    /// A new design file or board the user asked for (the File menu, its shortcut, the home
+    /// screen, the tab bar's +): with a workspace, made and saved in its Drafts at once, as Figma
+    /// keeps every new file; without one, an untitled tab as before.
+    pub fn new_file(&mut self, board: bool) {
+        let workspace = crate::home_workspace::offered() && figcraft_engine::workspace::active(&self.session.prefs).is_some_and(|w| !w.missing);
+        if workspace {
+            self.run("workspace.newFile", json!({"kind": if board { "board" } else { "design" }}));
+            self.ui.home_view.workspace.relist();
+        } else {
+            self.run(if board { "file.newBoard" } else { "file.new" }, json!({}));
+        }
+    }
+
     /// Pick a folder; `done` runs as [`FigApp::pick_open`]'s does.
     pub fn pick_folder(&mut self, title: &str, done: impl FnOnce(&mut FigApp, PathBuf) + 'static) {
         self.start_dialog(|services| services.pick_folder(title), true, done);
@@ -233,15 +246,19 @@ impl FigApp {
     }
 
     /// With auto-save on, files that have a path are saved [`AUTO_SAVE_SECS`] after they last
-    /// changed (not during a gesture, a live preview or while a version is shown). The file is
-    /// encoded on a thread of its own, so a big one doesn't hold up the window, and written here.
+    /// changed (not during a gesture, a live preview or while a version is shown); files in a
+    /// workspace always are, as Figma keeps every file. The file is encoded on a thread of its
+    /// own, so a big one doesn't hold up the window, and written here.
     pub(super) fn auto_save_tick(&mut self, ctx: &egui::Context, now: f64) {
         let mut failed = self.auto_save_done();
         // The browser has no files to save to.
-        let on = !cfg!(target_arch = "wasm32") && self.session.prefs.auto_save;
+        let on = !cfg!(target_arch = "wasm32");
+        let every = self.session.prefs.auto_save;
+        let prefs = &self.session.prefs;
         let saving = &self.ui.auto_saving;
         let due = |d: &&figcraft_engine::DocState| {
-            d.path.as_deref().is_some_and(|p| d.images_lost_saving_to(p).is_none())
+            d.path.as_deref().is_some_and(|p| every || figcraft_engine::workspace::in_workspace(prefs, p))
+                && d.path.as_deref().is_some_and(|p| d.images_lost_saving_to(p).is_none())
                 && d.branch_of.is_none()
                 && d.preview.is_none()
                 && d.is_dirty()

@@ -15,7 +15,7 @@ use crate::toolbar::pretty_shortcut;
 mod clipboard;
 mod palette;
 mod select_layer;
-mod tree;
+pub(crate) mod tree;
 
 pub use clipboard::paste;
 use clipboard::{figcraft_svg_export, text_layers_text};
@@ -93,6 +93,8 @@ pub fn invoke(app: &mut FigApp, id: &str) {
             app.run(id, json!({}));
         }
         "file.open" => app.open_dialog(),
+        "file.new" => app.new_file(false),
+        "file.newBoard" => app.new_file(true),
         // From the keyboard or a menu, typing goes on in the new sticky.
         "board.nextSticky" => {
             app.run(id, json!({"edit": true}));

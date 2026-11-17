@@ -159,7 +159,7 @@ pub fn left_panel(app: &mut FigApp, ui: &mut Ui) {
         if let (Some(new), _) = crate::widgets::rename_field(ui, Id::unique("filename"), &name, nr, semibold(13.0), start) {
             app.run("file.rename", json!({"name": new}));
         }
-        ui.painter().text(pos2(head.min.x + 16.0, head.min.y + 46.0), Align2::LEFT_CENTER, tr("Drafts"), regular(11.0), t.text_secondary);
+        breadcrumb(app, ui, &t, Rect::from_min_max(pos2(head.min.x + 14.0, head.min.y + 38.0), pos2(head.max.x - 16.0, head.min.y + 54.0)));
     }
     let hr = Rect::from_center_size(pos2(head.max.x - 24.0, head.min.y + 24.0), vec2(24.0, 24.0));
     // Minimize, by the file name: "click Minimize next to the file name to collapse the
@@ -1398,4 +1398,53 @@ fn layers(app: &mut FigApp, ui: &mut Ui) {
         select_clicked(app, &rows, &sel, id, m);
     }
     let _ = Color32::TRANSPARENT;
+}
+
+/// Under the file name: where the file is (fork). In a workspace, "Workspace / Project" (or
+/// "Workspace / Drafts"), and a click shows that place on the home screen; a file saved elsewhere,
+/// its folder's name; a file never saved, "Not saved yet". Worked out at most every two seconds per
+/// file (it reads the workspace's name from its folder).
+fn breadcrumb(app: &mut FigApp, ui: &mut Ui, t: &Tokens, r: Rect) {
+    let path = app.session.ds().ok().and_then(|d| d.path.clone());
+    let now = ui.input(|i| i.time);
+    let key = Id::unique(("file_breadcrumb", path.clone()));
+    type Cached = (f64, String, Option<figcraft_engine::workspace::Location>);
+    let cached: Option<Cached> = ui.data(|d| d.get_temp(key)).filter(|c: &Cached| now - c.0 < 2.0);
+    let (_, label, loc) = cached.unwrap_or_else(|| {
+        let loc = path.as_deref().and_then(|p| figcraft_engine::workspace::locate(&app.session.prefs, p));
+        let label = match (&loc, &path) {
+            (Some(l), _) => {
+                let project = if l.drafts { tr("Drafts").to_string() } else { l.project.clone() };
+                format!("{} / {project}", l.workspace_name)
+            }
+            (None, Some(p)) => std::path::Path::new(p)
+                .parent()
+                .and_then(std::path::Path::file_name)
+                .map_or_else(|| tr("Not saved yet").to_string(), |f| f.to_string_lossy().into_owned()),
+            (None, None) => tr("Not saved yet").to_string(),
+        };
+        let fresh: Cached = (now, label, loc);
+        ui.data_mut(|d| d.insert_temp(key, fresh.clone()));
+        fresh
+    });
+    let text = crate::widgets::elide_font(ui, &label, r.width(), regular(11.0));
+    let shown = ui.painter().text(pos2(r.min.x + 2.0, r.center().y), Align2::LEFT_CENTER, &text, regular(11.0), t.text_secondary);
+    let Some(loc) = loc else { return };
+    let resp = ui.interact(shown.expand(2.0), Id::unique("file_breadcrumb_link"), Sense::click());
+    crate::a11y::button(&resp, &label);
+    if resp.hovered() {
+        ui.painter().line_segment([pos2(shown.min.x, shown.max.y), pos2(shown.max.x, shown.max.y)], egui::Stroke::new(1.0, t.text_secondary));
+        ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
+    }
+    if resp.on_hover_text(tr("Show in workspace")).clicked() {
+        if app.session.prefs.active_workspace.as_deref() != Some(loc.workspace.as_str()) {
+            app.run("workspace.switch", json!({"workspace": loc.workspace}));
+        }
+        let place = if loc.drafts { crate::home_workspace::Place::Drafts } else { crate::home_workspace::Place::Project(loc.project.clone()) };
+        app.ui.home = true;
+        app.ui.home_view.section = crate::home::Section::Workspace;
+        app.ui.home_view.file_query.clear();
+        app.ui.home_view.workspace.place = place;
+        app.ui.home_view.workspace.relist();
+    }
 }
