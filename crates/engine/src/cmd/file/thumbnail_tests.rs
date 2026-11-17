@@ -139,18 +139,23 @@ fn custom_thumbnails_keep_the_size_limit_and_aspect_ratio() {
 }
 
 #[test]
-fn native_save_and_fig_export_embed_the_same_chosen_thumbnail() {
+fn native_save_embeds_the_16_9_cover_and_fig_export_the_whole_chosen_frame() {
     let (mut s, cover, _) = scene();
     choose(&mut s, cover);
     let before = s.doc().unwrap().clone();
-    let expected = picture(s.doc().unwrap());
-    let native = file_bytes(s.ds().unwrap()).unwrap();
-    let (fig, _) = super::export::fig_bytes(s.doc().unwrap()).unwrap();
-    for bytes in [native, fig] {
+    let png_of = |bytes: Vec<u8>| {
         let png = figcraft_format::thumbnail::thumbnail_png(std::io::Cursor::new(bytes)).unwrap();
-        let actual = image::load_from_memory(&png).unwrap().to_rgba8();
-        assert_eq!(actual.dimensions(), (200, 200));
-        assert_eq!(actual, expected);
-    }
+        image::load_from_memory(&png).unwrap().to_rgba8()
+    };
+    // The file's own picture is the cover cropped to the home screen's cards (a 100 x 100 frame,
+    // drawn four times its size).
+    let native = png_of(file_bytes(s.ds().unwrap()).unwrap());
+    assert_eq!(native.dimensions(), (400, 225));
+    assert_eq!(native, image::load_from_memory(&cover_thumbnail(s.doc().unwrap()).unwrap()).unwrap().to_rgba8());
+    // A .fig copy carries the whole frame, as before.
+    let (fig, _) = super::export::fig_bytes(s.doc().unwrap()).unwrap();
+    let fig = png_of(fig);
+    assert_eq!(fig.dimensions(), (200, 200));
+    assert_eq!(fig, picture(s.doc().unwrap()));
     assert_eq!(s.doc().unwrap(), &before);
 }

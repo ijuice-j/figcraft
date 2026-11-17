@@ -22,6 +22,10 @@ An unofficial fork of [FigCraft](https://github.com/storytold/figcraft) by the A
     Bin); several workspaces to switch between.
   - The editor shows where a file lives (*Workspace / Project*) under its name; click it to go there.
   - `workspace.*` commands do the same for scripts and agents.
+- **File covers.** Right-click a frame and choose **Set as thumbnail**, as in Figma: it becomes the
+  file's cover and fills its card in Recents and in workspace projects (1920 × 1080 fits exactly).
+  The cover is marked on the canvas and in Layers, the Design panel offers **Remove thumbnail**,
+  and **File › Add cover page** adds a ready-made cover page with the file's name.
 
 ## Build
 

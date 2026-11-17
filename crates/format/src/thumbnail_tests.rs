@@ -153,7 +153,10 @@ fn previews_carry_the_first_pages_colour() {
     assert!(p.picture.is_some());
     // A file with nothing on it: its colour, no picture.
     let bytes = crate::save_bytes(&doc_on([0.9, 0.9, 0.9]), None).unwrap();
-    assert_eq!(archive_preview(Cursor::new(&bytes), 640), Preview { page: Some([0.9, 0.9, 0.9, 1.0]), picture: None, kind: Default::default() });
+    assert_eq!(
+        archive_preview(Cursor::new(&bytes), 640),
+        Preview { page: Some([0.9, 0.9, 0.9, 1.0]), picture: None, kind: Default::default(), cover: false }
+    );
     // A board says so (the home screen marks it).
     let mut board = doc_on([0.9, 0.9, 0.9]);
     board.kind = figcraft_doc::FileKind::Board;

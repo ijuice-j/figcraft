@@ -127,6 +127,9 @@ pub struct Preview {
     pub picture: Option<Thumbnail>,
     /// A design file or a board (`.fig` and `.sketch` files and images: design).
     pub kind: figcraft_doc::FileKind,
+    /// The picture is a cover chosen in the file (16:9, [`crate::COVER_MARKER`]): a card fills
+    /// with it rather than fitting it.
+    pub cover: bool,
 }
 
 /// The [`Preview`] of the file at `path`, its picture at most `fit` pixels on its longer side.
@@ -155,7 +158,8 @@ pub fn archive_preview<R: Read + Seek>(archive: R, fit: u32) -> Preview {
         let meta = z.read("meta.json", MAX_META_BYTES).ok().flatten();
         (meta.as_deref().and_then(fig_page), figcraft_doc::FileKind::Design)
     };
-    Preview { page, picture, kind }
+    let cover = picture.is_some() && z.read(crate::COVER_MARKER, 16).ok().flatten().is_some();
+    Preview { page, picture, kind, cover }
 }
 
 /// The first page's background in a `.figcraft` `document.json`, and the file's kind.

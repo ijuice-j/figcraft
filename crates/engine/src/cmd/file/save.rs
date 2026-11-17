@@ -20,7 +20,7 @@ pub fn thumbnail(doc: &Document) -> Option<Vec<u8>> {
     doc.ids()
         .find_map(|id| {
             let n = doc.node(id)?;
-            if !n.kind.is_frame_like() || n.plugin_data.get("figcraft.thumbnail").map(String::as_str) != Some("true") {
+            if !crate::cover::can_be_thumbnail(&n.kind) || n.plugin_data.get(crate::cover::KEY).map(String::as_str) != Some("true") {
                 return None;
             }
             // Hidden library-store pages are not document pages.
@@ -36,6 +36,31 @@ pub fn thumbnail(doc: &Document) -> Option<Vec<u8>> {
             render(page, doc.page_content_bounds(page)?, None)
         })
 }
+
+/// The cover a file shows on the home screen's 16:9 cards: the frame chosen with Set as thumbnail
+/// ([`crate::cover::thumbnail_frame`]), cropped from its centre to 16:9 and drawn
+/// [`COVER_W`] pixels wide (up to four times its size, so a small frame isn't drawn tiny). None
+/// without a chosen frame, or when it can't be drawn.
+pub fn cover_thumbnail(doc: &Document) -> Option<Vec<u8>> {
+    let id = crate::cover::thumbnail_frame(doc)?;
+    let page = doc.page_of(id).filter(|p| doc.pages.contains(p))?;
+    let b = figcraft_render::export_bounds(doc, id)?;
+    if ![b.x0, b.y0, b.x1, b.y1].into_iter().all(f64::is_finite) || b.width() <= 0.0 || b.height() <= 0.0 {
+        return None;
+    }
+    // The largest 16:9 area in the middle of the frame.
+    let (w, h) = if b.width() * 9.0 > b.height() * 16.0 { (b.height() * 16.0 / 9.0, b.height()) } else { (b.width(), b.width() * 9.0 / 16.0) };
+    let (x0, y0) = (b.x0 + (b.width() - w) / 2.0, b.y0 + (b.height() - h) / 2.0);
+    let scale = (f64::from(COVER_W) / w).min(4.0);
+    let view =
+        figcraft_render::View { origin: (x0, y0), scale, width: (w * scale).round().max(1.0) as u32, height: (h * scale).round().max(1.0) as u32 };
+    let opts = figcraft_render::Options { solo: Some(id), ..Default::default() };
+    let pix = figcraft_render::render_view(doc, page, &view, &opts)?;
+    figcraft_render::encode_png(&pix).ok()
+}
+
+/// How wide a cover is drawn (pixels): a card at its widest on a double-density screen.
+pub const COVER_W: u32 = 720;
 
 /// The `.figcraft` file for a document: content, thumbnail and version history.
 pub fn file_bytes(ds: &DocState) -> Result<Vec<u8>> {
@@ -90,8 +115,12 @@ impl FileSnapshot {
         if let Some(path) = path {
             crate::library::relate_links(&mut doc, path);
         }
-        let thumb = thumbnail(&doc);
-        figcraft_format::save_bytes_with_history(&doc, thumb.as_deref(), &self.versions, &self.branches)
+        // A chosen cover fills the home screen's cards; without one, the automatic picture.
+        let (thumb, cover) = match cover_thumbnail(&doc) {
+            Some(png) => (Some(png), true),
+            None => (thumbnail(&doc), false),
+        };
+        figcraft_format::save_bytes_with_cover(&doc, thumb.as_deref(), cover, &self.versions, &self.branches)
             .map_err(|e| EngineError::Other(e.to_string()))
     }
 

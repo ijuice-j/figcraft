@@ -459,6 +459,22 @@ pub fn save_bytes_with_history(
     versions: &[Version],
     branches: &[Branch],
 ) -> Result<Vec<u8>, FormatError> {
+    save_bytes_with_cover(doc, thumbnail_png, false, versions, branches)
+}
+
+/// The archive member that says `thumbnail.png` is the file's cover (a frame chosen with Set as
+/// thumbnail, cropped to the home screen's 16:9 cards), so a card fills with it instead of fitting
+/// it. Older readers skip it.
+pub const COVER_MARKER: &str = "thumbnail-cover";
+
+/// [`save_bytes_with_history`], `cover` saying the thumbnail is a chosen cover ([`COVER_MARKER`]).
+pub fn save_bytes_with_cover(
+    doc: &Document,
+    thumbnail_png: Option<&[u8]>,
+    cover: bool,
+    versions: &[Version],
+    branches: &[Branch],
+) -> Result<Vec<u8>, FormatError> {
     let mut z = craft_figcraft_format::ArchiveWriter::new();
     let stored = craft_figcraft_format::Compression::Stored;
     put_json(&mut z, "document.json", doc)?;
@@ -472,6 +488,9 @@ pub fn save_bytes_with_history(
     }
     if let Some(t) = thumbnail_png {
         put(&mut z, "thumbnail.png", stored, t)?;
+        if cover {
+            put(&mut z, COVER_MARKER, stored, b"1")?;
+        }
     }
     put_versions(&mut z, "versions", versions)?;
     if !branches.is_empty() {

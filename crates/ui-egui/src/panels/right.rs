@@ -297,6 +297,12 @@ fn design(app: &mut FigApp, ui: &mut Ui) {
     if !points_selected {
         crate::layout_panel::layout_section(app, ui, &shown, &sel);
         widgets::separator(ui);
+        if let [id] = sel.as_slice()
+            && doc.node(*id).is_some_and(figcraft_engine::cover::is_thumbnail)
+        {
+            thumbnail_section(app, ui);
+            widgets::separator(ui);
+        }
     }
     if vector_edit_none && arc_section(app, ui, &shown, &sel) || points_section(app, ui, &shown, &sel) {
         widgets::separator(ui);
@@ -326,6 +332,27 @@ fn design(app: &mut FigApp, ui: &mut Ui) {
 
 /// Draw the page section: background and colour profile, local variables/styles, and the
 /// page export section.
+/// On the file's cover frame (fork): what it is, and Remove thumbnail.
+fn thumbnail_section(app: &mut FigApp, ui: &mut Ui) {
+    let t = Tokens::get(ui.ctx());
+    widgets::section_header(ui, tr("Thumbnail"), &[], false);
+    let mut remove = false;
+    ui.horizontal(|ui| {
+        ui.add_space(16.0);
+        ui.vertical(|ui| {
+            ui.set_width((ui.available_width() - 16.0).max(80.0));
+            let note = tr("This frame is the file's cover. Its card in Recents and your workspace shows it.");
+            ui.add(egui::Label::new(egui::RichText::new(note).font(regular(11.0)).color(t.text_secondary)).wrap());
+            ui.add_space(8.0);
+            remove = widgets::button(ui, tr("Remove thumbnail"), false, true).clicked();
+        });
+    });
+    ui.add_space(12.0);
+    if remove {
+        app.run("object.removeThumbnail", json!({}));
+    }
+}
+
 fn page_section(app: &mut FigApp, ui: &mut Ui, doc: &Document) {
     let Ok(page) = app.session.page() else { return };
     let bg = match doc.node(page).map(|n| &n.kind) {

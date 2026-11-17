@@ -16,6 +16,7 @@ mod canvas;
 pub mod catalog;
 pub mod cmd;
 mod content;
+pub mod cover;
 mod dev;
 pub mod events;
 mod extensions;

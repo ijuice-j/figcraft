@@ -12,7 +12,7 @@ use super::edit::{roots, z_sorted};
 use super::{CommandSpec, ok};
 
 mod suggest;
-use crate::params::{f64_of, get, id_of, num_or, req_id, req_index, req_num, req_targets, string, targets};
+use crate::params::{f64_of, get, id_of, num_or, req_id, req_index, req_num, req_targets, string};
 use crate::{EngineError, Result, Session, bad, spec};
 
 /// The layer structure commands: group, frame, mask, boolean operations, flatten, auto layout
@@ -119,19 +119,6 @@ pub fn specs() -> Vec<CommandSpec> {
             suggest::layout_suggest
         ),
         spec!("object.moveToPage", "Move to page", "{ids?, page}", true, move_to_page),
-        spec!("object.setThumbnail", "Set as thumbnail", "{id?}", true, |s, p| {
-            let id = targets(s, p).first().copied().ok_or_else(|| bad("object.setThumbnail", "select a frame"))?;
-            let doc = s.doc_mut()?;
-            for n in doc.ids().collect::<Vec<_>>() {
-                if let Some(node) = doc.node(n)
-                    && node.plugin_data.contains_key("figcraft.thumbnail")
-                {
-                    doc.get_mut(n)?.plugin_data.remove("figcraft.thumbnail");
-                }
-            }
-            doc.get_mut(id)?.plugin_data.insert("figcraft.thumbnail".into(), "true".into());
-            ok()
-        }),
         spec!("object.rasterize", "Rasterize selection", "{ids?, scale? (default 2)}", true, rasterize),
         spec!("vector.reverse", "Reverse path direction", "{ids?}", true, |s, p| {
             for i in req_targets("vector.reverse", s, p)? {
