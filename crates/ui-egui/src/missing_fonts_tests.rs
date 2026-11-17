@@ -195,3 +195,24 @@ fn a_family_the_font_store_has_offers_download_and_asks_before_any_download() {
     assert_eq!(listed(&u)["consent"], Value::Null);
     assert!(!figcraft_engine::fonts::downloads_allowed() && figcraft_engine::fonts::downloads().is_empty());
 }
+
+#[test]
+fn a_font_store_family_picked_in_a_font_menu_asks_before_it_downloads() {
+    figcraft_engine::fonts::download::use_store_dir(std::env::temp_dir().join(format!("figcraft-ui-font-store-{}", std::process::id())));
+    assert!(fonts_indexed());
+    let Some(store) = ["Merriweather", "Lato", "Bungee Shade"].into_iter().find(|f| !figcraft_text::has_family(f)) else {
+        eprintln!("skipped: these fonts are installed");
+        return;
+    };
+    let mut u = Ui::new(Session::new());
+    u.app.run_user("text.create", json!({"text": "Hamburgefonstiv", "props": {"fontFamily": store}}));
+    u.frame(vec![]);
+    crate::missing_fonts::fetch(&mut u.app, store);
+    u.frame(vec![]);
+    assert_eq!(listed(&u)["consent"], store, "downloading is off: the window asks first");
+    assert!(listed(&u)["families"].as_array().unwrap().iter().any(|f| f["family"] == store && f["source"] == "Google Fonts"));
+    assert!(figcraft_engine::fonts::downloads().is_empty(), "nothing downloads before the user allows it");
+    click_button(&mut u, "Not now");
+    assert_eq!(listed(&u)["consent"], Value::Null);
+    assert!(!figcraft_engine::fonts::downloads_allowed() && figcraft_engine::fonts::downloads().is_empty());
+}

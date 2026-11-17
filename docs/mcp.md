@@ -288,7 +288,10 @@ Or in a project's `.mcp.json`:
   do, in the app's Missing fonts window; otherwise it is refused. Call it again for its progress
   (`{state: downloading, done, total}`); once installed, the call fits the open document's text to
   the font (`{state: installed, refitted}`). `font.downloads` lists the downloads and whether
-  downloading is allowed (`{allowed, downloads: [{family, state, error?}]}`). Fonts are indexed once
+  downloading is allowed (`{allowed, downloads: [{family, state, error?}]}`). `font.library
+  {query?, limit?}` lists the families `font.download` can install, by part of their name
+  (`{total, families: [{family, source, installed}]}`); the font menus list the same families
+  after the installed ones. Fonts are indexed once
   per process: after installing one, `text.rescanFonts` picks it up (`{added: [families]}`), and
   `text.loadFont {path | data (base64)}` adds a font file without installing it (`{families}`).
   Text boxes keep the size they were measured at: both refit the open document's auto-sizing text

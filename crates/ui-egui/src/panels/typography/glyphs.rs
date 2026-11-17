@@ -197,12 +197,17 @@ mod tests {
     /// One frame of the font picker under a field, with `events`. `opened` clicks the field first
     /// (a press frame, then the release frame this returns).
     fn pick(ctx: &egui::Context, current: &str, opened: bool, events: Vec<egui::Event>) -> FontPick {
+        pick_from(ctx, current, opened, false, events)
+    }
+
+    /// [`pick`], with the font store's families listed too when `library`.
+    fn pick_from(ctx: &egui::Context, current: &str, opened: bool, library: bool, events: Vec<egui::Event>) -> FontPick {
         let field = egui::Rect::from_min_size(egui::pos2(10.0, 10.0), egui::vec2(200.0, 24.0));
         let frame = |events: Vec<egui::Event>| {
             let mut out = FontPick::default();
             let mut shown = ctx.run_ui(egui::RawInput { events, ..Default::default() }, |ui| {
                 let resp = ui.interact(field, egui::Id::unique("font_field"), egui::Sense::click());
-                out = font_picker(ui, &resp, Some(current), 240.0, |_| false).unwrap_or_default();
+                out = font_picker(ui, &resp, Some(current), 240.0, library, |_| false).unwrap_or_default();
             });
             shown.textures_delta.clear();
             out
@@ -249,6 +254,64 @@ mod tests {
         pick(&ctx, current, false, vec![key(egui::Key::ArrowDown)]);
         let enter = pick(&ctx, current, false, vec![key(egui::Key::Enter)]);
         assert_eq!(enter.picked.as_deref(), Some(all[1].as_str()));
+    }
+
+    /// The font store's list, once its thread has read it.
+    fn store_library() -> &'static [(String, String)] {
+        for _ in 0..600 {
+            if let Some(list) = figcraft_engine::fonts::library() {
+                return list;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        }
+        panic!("the font store's list was never read");
+    }
+
+    #[test]
+    fn the_font_store_families_follow_the_installed_ones_and_enter_picks_one_to_download() {
+        figcraft_text::scan_system_fonts();
+        let installed: Vec<String> = figcraft_text::family_names().iter().map(|f| f.to_lowercase()).collect();
+        let library = store_library();
+        // A Google Fonts family that isn't installed and is the first row its own name finds.
+        let Some(store) = library.iter().filter(|(f, src)| src == "Google Fonts" && f.len() > 6).map(|(f, _)| f.as_str()).find(|f| {
+            let key = f.to_lowercase();
+            !installed.iter().any(|i| i.contains(&key)) && library.iter().find(|(o, _)| o.to_lowercase().contains(&key)).is_some_and(|(o, _)| o == f)
+        }) else {
+            eprintln!("skipped: every Google Fonts family is installed");
+            return;
+        };
+        let ctx = egui::Context::default();
+        let current = "FigCraft No Such Family";
+        pick_from(&ctx, current, true, true, vec![]);
+        // The store's rows are listed under their source, after the installed fonts' header.
+        let typed = pick_from(&ctx, current, false, true, vec![egui::Event::Text(store.to_string())]);
+        assert!(typed.picked.is_none() && typed.hovered.is_none());
+        let enter = pick_from(&ctx, current, false, true, vec![key(egui::Key::Enter)]);
+        assert_eq!(enter.picked.as_deref(), Some(store));
+        assert!(enter.download, "a family that isn't installed is downloaded");
+
+        // Without the library (the glyphs panel), the same search finds nothing to pick.
+        let ctx = egui::Context::default();
+        pick_from(&ctx, current, true, false, vec![]);
+        pick_from(&ctx, current, false, false, vec![egui::Event::Text(store.to_string())]);
+        let enter = pick_from(&ctx, current, false, false, vec![key(egui::Key::Enter)]);
+        assert!(enter.picked.is_none() && !enter.download);
+    }
+
+    #[test]
+    fn an_installed_family_is_picked_without_a_download_when_the_library_is_listed() {
+        figcraft_text::scan_system_fonts();
+        store_library();
+        let Some(first) = figcraft_text::family_names().into_iter().next() else {
+            eprintln!("skipped: no fonts on this machine");
+            return;
+        };
+        let ctx = egui::Context::default();
+        pick_from(&ctx, "FigCraft No Such Family", true, true, vec![]);
+        pick_from(&ctx, "FigCraft No Such Family", false, true, vec![egui::Event::Text(first.clone())]);
+        let enter = pick_from(&ctx, "FigCraft No Such Family", false, true, vec![key(egui::Key::Enter)]);
+        assert_eq!(enter.picked.as_deref(), Some(first.as_str()), "installed matches come first");
+        assert!(!enter.download);
     }
 
     #[test]

@@ -3,7 +3,7 @@
 
 use serde_json::{Value, json};
 
-use super::{Download, downloads, downloads_allowed, jobs, set, source};
+use super::{Download, downloads, downloads_allowed, jobs, library_now, set, source};
 use crate::{EngineError, Session};
 
 #[test]
@@ -58,4 +58,40 @@ fn a_download_reports_its_progress_then_fits_the_text_once_installed() {
     let r = s.execute("font.download", &json!({"family": family})).unwrap();
     assert_eq!(r, json!({"family": family, "state": "installed", "refitted": []}));
     assert!(!downloads().iter().any(|(f, _)| f == family));
+}
+
+#[test]
+fn the_library_lists_each_store_family_once_by_name() {
+    let list = library_now();
+    assert!(list.len() > 1000, "Google Fonts and Noto: {}", list.len());
+    assert!(list.iter().any(|(f, src)| f == "Lato" && src == "Google Fonts"));
+    let keys: Vec<String> = list.iter().map(|(f, _)| f.to_lowercase()).collect();
+    assert!(keys.windows(2).all(|w| w[0] < w[1]), "sorted by name ignoring case, each name once");
+    // The picker downloads what font.download can: the same source as the Missing fonts window.
+    for (family, src) in list.iter().step_by(97) {
+        assert_eq!(source(family).as_deref(), Some(src.as_str()), "{family}");
+    }
+}
+
+#[test]
+fn font_library_finds_families_by_part_of_their_name() {
+    let mut s = Session::new();
+    let r = s.execute("font.library", &json!({"query": "  MERRIWEATHER "})).unwrap();
+    let names: Vec<&str> = r["families"].as_array().unwrap().iter().map(|f| f["family"].as_str().unwrap()).collect();
+    assert!(names.contains(&"Merriweather"), "{names:?}");
+    assert!(names.iter().all(|n| n.to_lowercase().contains("merriweather")), "{names:?}");
+    assert_eq!(r["total"].as_u64(), Some(names.len() as u64));
+    let lato = s.execute("font.library", &json!({"query": "lato", "limit": 50})).unwrap();
+    let lato = lato["families"].as_array().unwrap().iter().find(|f| f["family"] == "Lato").cloned().unwrap();
+    assert_eq!(lato["source"], "Google Fonts");
+    assert_eq!(lato["installed"], figcraft_text::has_family("Lato"));
+
+    let few = s.execute("font.library", &json!({"limit": 3})).unwrap();
+    assert_eq!(few["families"].as_array().unwrap().len(), 3);
+    assert!(few["total"].as_u64().unwrap() > 3);
+    let none = s.execute("font.library", &json!({"query": "FigCraft Not A Store Font"})).unwrap();
+    assert_eq!(none, json!({"total": 0, "families": []}));
+    for junk in [json!({"query": 5}), json!({"limit": -1}), json!({"limit": "many"}), json!({"limit": 1.5})] {
+        assert!(matches!(s.execute("font.library", &junk), Err(EngineError::BadParams { .. })), "{junk}");
+    }
 }

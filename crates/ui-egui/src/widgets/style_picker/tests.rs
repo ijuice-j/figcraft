@@ -311,7 +311,7 @@ fn commit_text_field(def: &TextStyle, field: &str, typed: &str) -> Option<TextSt
     ctx.data_mut(|d| d.insert_temp(Id::unique((field, "S")).with("editing"), typed.to_string()));
     let enter = egui::Event::Key { key: egui::Key::Enter, physical_key: None, pressed: true, repeat: false, modifiers: Default::default() };
     let input = RawInput { screen_rect: Some(Rect::from_min_size(Pos2::ZERO, vec2(400.0, 400.0))), events: vec![enter], ..Default::default() };
-    let mut f = Frame { act: None, hover: None, budget: 0 };
+    let mut f = Frame { act: None, download: None, hover: None, budget: 0 };
     let doc = Document::new("d");
     let style = Style {
         id: "S".into(),

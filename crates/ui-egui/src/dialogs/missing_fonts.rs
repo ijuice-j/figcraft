@@ -5,6 +5,7 @@
 //! A family the font store has (Google Fonts, Noto) gets a Download button (#754): the first
 //! one asks the user to turn downloading on, then `font.download` installs it on a thread of its
 //! own, and once it's installed the file's text fits the real font and the family leaves the list.
+//! A font store family picked in a font menu comes here too ([`fetch`]).
 
 use egui::RichText;
 use figcraft_engine::fonts::{Download, Missing, allow_downloads, downloads, downloads_allowed, missing};
@@ -228,6 +229,23 @@ fn consent_prompt(ui: &mut egui::Ui, t: &Tokens) -> Option<bool> {
         }
     })
     .inner
+}
+
+/// A font store family picked in a font menu (already applied, so the file now names it): it
+/// downloads at once while downloading is on, else this window opens and asks to allow it, as its
+/// Download button does. Not in the browser, which has no font store.
+pub fn fetch(app: &mut FigApp, family: &str) {
+    if cfg!(target_arch = "wasm32") {
+        return;
+    }
+    if downloads_allowed() {
+        start(app, family);
+        return;
+    }
+    request(app);
+    if let Some(shown) = app.ui.missing_fonts.as_mut() {
+        shown.consent = Some(family.to_string());
+    }
 }
 
 fn start(app: &mut FigApp, family: &str) {

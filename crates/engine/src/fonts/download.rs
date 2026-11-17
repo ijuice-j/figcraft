@@ -18,7 +18,7 @@ use serde_json::{Value, json};
 
 use super::Download;
 use crate::cmd::CommandSpec;
-use crate::params::req_string;
+use crate::params::{get, opt_index, req_string};
 use crate::{EngineError, Result, Session, bad, spec};
 
 /// Lower-case family → (spelling, download). Installs are the machine's, so the jobs are the
@@ -69,6 +69,49 @@ fn index() -> &'static Index {
 pub fn source(family: &str) -> Option<String> {
     let index = index();
     index.family(family.trim()).and_then(|f| index.source_of(f)).map(|s| s.name.clone())
+}
+
+/// Every family the font store's indexes have, once per name (the first source's, as
+/// [`source`] picks it): `(family, source name)`, sorted by name ignoring case, built-in sources'
+/// families before any the user added. Installed families are listed too.
+fn build_library() -> Vec<(String, String)> {
+    let index = index();
+    let mut seen = std::collections::BTreeSet::new();
+    let mut out: Vec<(String, String)> = index
+        .families()
+        .iter()
+        .filter(|f| seen.insert(f.family.to_lowercase()))
+        .filter_map(|f| Some((f.family.clone(), index.source_of(f)?.name.clone())))
+        .collect();
+    out.sort_by_cached_key(|(family, _)| family.to_lowercase());
+    out
+}
+
+static LIBRARY: OnceLock<Vec<(String, String)>> = OnceLock::new();
+
+/// [`build_library`]'s list for the font picker, without waiting: the first call reads the
+/// indexes on a thread of its own (about 620 KB of gzipped JSON, too slow for a UI frame), and
+/// until that is done this is `None`.
+pub fn library() -> Option<&'static [(String, String)]> {
+    static STARTED: std::sync::Once = std::sync::Once::new();
+    if let Some(list) = LIBRARY.get() {
+        return Some(list);
+    }
+    STARTED.call_once(|| {
+        let spawned = std::thread::Builder::new().name("figcraft-font-library".into()).spawn(|| {
+            LIBRARY.get_or_init(build_library);
+        });
+        if spawned.is_err() {
+            // No thread: read it here rather than never.
+            LIBRARY.get_or_init(build_library);
+        }
+    });
+    LIBRARY.get().map(Vec::as_slice)
+}
+
+/// [`library`], waiting for it.
+fn library_now() -> &'static [(String, String)] {
+    LIBRARY.get_or_init(build_library)
 }
 
 /// Whether the user turned downloading fonts on (the setting is the store's, shared by every
@@ -140,9 +183,35 @@ fn download(s: &mut Session, p: &Value) -> Result<Value> {
     Ok(json!({"family": found.family, "source": source, "state": "downloading", "done": 0, "total": total, "files": found.files.len()}))
 }
 
-/// The font commands that download: `font.download` and `font.downloads`.
+/// `font.library`: the families the font store can download, those whose name has `query` in it
+/// (any case), at most `limit` (default 100) of them; each says whether it's installed already.
+fn library_cmd(_: &mut Session, p: &Value) -> Result<Value> {
+    const CMD: &str = "font.library";
+    let query = match get(p, "query") {
+        None | Some(Value::Null) => String::new(),
+        Some(Value::String(q)) => q.trim().to_lowercase(),
+        Some(_) => return Err(bad(CMD, "`query` must be a string")),
+    };
+    let limit = opt_index(CMD, p, "limit")?.unwrap_or(100);
+    let matching: Vec<&(String, String)> = library_now().iter().filter(|(f, _)| query.is_empty() || f.to_lowercase().contains(&query)).collect();
+    let families: Vec<Value> = matching
+        .iter()
+        .take(limit)
+        .map(|(family, source)| json!({"family": family, "source": source, "installed": figcraft_text::has_family(family)}))
+        .collect();
+    Ok(json!({"total": matching.len(), "families": families}))
+}
+
+/// The font commands that download: `font.library`, `font.download` and `font.downloads`.
 pub fn specs() -> Vec<CommandSpec> {
     vec![
+        spec!(
+            "font.library",
+            "Font library",
+            "{query? (part of a family name, any case), limit? (default 100)}  the font families font.download can install (Google Fonts, Noto), by name → {total (how many match), families: [{family, source, installed}]}",
+            false,
+            library_cmd
+        ),
         spec!(
             "font.download",
             "Download font",

@@ -291,6 +291,8 @@ enum Act {
 /// What a listing reports besides acts: the style under the pointer, and the preview budget.
 struct Frame {
     act: Option<Act>,
+    /// A font store family the text style's font menu picked: it is downloaded.
+    download: Option<String>,
     hover: Option<Key>,
     /// Text previews still allowed to render this frame.
     budget: usize,
@@ -924,8 +926,9 @@ fn text_property_fields(ui: &mut Ui, doc: &Document, style: &Style, def: &TextSt
     (family_resp, style_resp)
 }
 
-/// The font menu: Apply variable, then the installed fonts. Picking a font keeps its style when the
-/// family has one, else falls back to Regular or the first style.
+/// The font menu: Apply variable, then the installed fonts and the font store's. Picking a font
+/// keeps its style when the family has one, else falls back to Regular or the first style; a font
+/// store family is downloaded.
 fn font_family_menu(ui: &Ui, id: &str, def: &TextStyle, family_resp: &Response, out: &mut Frame) {
     let apply_variable = |ui: &mut Ui| {
         let picked = crate::right::menu_item(ui, tr("Apply variable"), "");
@@ -937,7 +940,11 @@ fn font_family_menu(ui: &Ui, id: &str, def: &TextStyle, family_resp: &Response, 
         }
         picked
     };
-    if let Some(f) = crate::typography::font_picker(ui, family_resp, Some(&def.font_family), 260.0, apply_variable).and_then(|p| p.picked) {
+    let pick = crate::typography::font_picker(ui, family_resp, Some(&def.font_family), 260.0, true, apply_variable);
+    if let Some((f, download)) = pick.and_then(|p| Some((p.picked?, p.download))) {
+        if download {
+            out.download = Some(f.clone());
+        }
         set_text(def, id, out, |d| {
             d.font_family = f.clone();
             let styles = figcraft_text::family_styles(&f);
@@ -1142,7 +1149,7 @@ pub fn show(app: &mut FigApp, ctx: &egui::Context) {
     };
     let x = crate::popover::beside_panel(panel, W, gap, app.ui.mirrored);
     let y = p.y.clamp(screen.min.y + 48.0, (screen.max.y - 460.0).max(screen.min.y + 48.0));
-    let mut out = Frame { act: None, hover: None, budget: 4 };
+    let mut out = Frame { act: None, download: None, hover: None, budget: 4 };
     // The title and the X are the shared popover's now; the list keeps its tools row.
     let title = if p.edit.is_some() { tr("Edit style") } else { p.slot.title() };
     let mut pop = app.ui.style_picker_popover.take().unwrap_or_else(|| Popover::new("style_picker_area", title).pad(PAD).surface(Surface::Menu));
@@ -1225,6 +1232,9 @@ pub fn show(app: &mut FigApp, ctx: &egui::Context) {
         }
         Some(Act::ToggleView) => app.ui.style_grid = !app.ui.style_grid,
         None => {}
+    }
+    if let Some(family) = out.download.take() {
+        crate::missing_fonts::fetch(app, &family);
     }
     if close {
         if let Some(e) = &p.edit {
