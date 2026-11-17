@@ -44,7 +44,15 @@ pub(super) fn select_layer_menu(app: &mut FigApp, ui: &mut Ui, pos: egui::Pos2, 
     let sel = ds.selection.clone();
     let picked = submenu_at(
         ui,
-        SubmenuOptions { area: Id::unique("ctx_select_layer"), key: SELECT_LAYER, label: tr("Select layer"), gap: 4.0, constrain: true, tokens: t },
+        SubmenuOptions {
+            area: Id::unique("ctx_select_layer"),
+            key: SELECT_LAYER,
+            label: tr("Select layer"),
+            gap: 4.0,
+            constrain: true,
+            flush: false,
+            tokens: t,
+        },
         |ui| {
             let mut picked = None;
             for (id, depth, name, locked) in &layers {

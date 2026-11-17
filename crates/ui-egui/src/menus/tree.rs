@@ -4,7 +4,12 @@ use super::{Color32, CornerRadius, Icon, Id, Rect, Sense, Stroke, Tokens, Ui, a1
 /// it. `key` names the submenu (its menu path, unique in its menu tree). Returns what `add`
 /// returned.
 pub(crate) fn submenu<R>(ui: &mut Ui, key: &str, label: &str, t: &Tokens, add: impl FnOnce(&mut Ui) -> Option<R>) -> Option<R> {
-    submenu_at(ui, SubmenuOptions { area: Id::unique(("submenu", key)), key, label, gap: 4.0, constrain: false, tokens: t }, add)
+    submenu_at(ui, SubmenuOptions { area: Id::unique(("submenu", key)), key, label, gap: 4.0, constrain: false, flush: false, tokens: t }, add)
+}
+
+/// [`submenu`] in a menu of plain rows (no check column): its label lines up with theirs.
+pub(crate) fn flush_submenu<R>(ui: &mut Ui, key: &str, label: &str, t: &Tokens, add: impl FnOnce(&mut Ui) -> Option<R>) -> Option<R> {
+    submenu_at(ui, SubmenuOptions { area: Id::unique(("submenu", key)), key, label, gap: 4.0, constrain: false, flush: true, tokens: t }, add)
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -248,11 +253,13 @@ pub(super) struct SubmenuOptions<'a> {
     pub(super) label: &'a str,
     pub(super) gap: f32,
     pub(super) constrain: bool,
+    /// Its label at the left like a plain menu row's, not after a check column.
+    pub(super) flush: bool,
     pub(super) tokens: &'a Tokens,
 }
 
 pub(super) fn submenu_at<R>(ui: &mut Ui, options: SubmenuOptions<'_>, add: impl FnOnce(&mut Ui) -> Option<R>) -> Option<R> {
-    let SubmenuOptions { area, key, label, gap, constrain, tokens: t } = options;
+    let SubmenuOptions { area, key, label, gap, constrain, flush, tokens: t } = options;
     let at = level_at(ui);
     let aim = aiming(ui);
     let w = ui.available_width();
@@ -275,7 +282,7 @@ pub(super) fn submenu_at<R>(ui: &mut Ui, options: SubmenuOptions<'_>, add: impl 
     // The open submenu's row stays highlighted while the pointer is in the submenu (not while it
     // rests on another row of this menu).
     let keep = open && !pending_elsewhere(ui.ctx(), &at);
-    paint_submenu_row(ui, r, label, keep || (resp.hovered() && !aim) || resp.has_focus(), t);
+    paint_submenu_row(ui, r, label, keep || (resp.hovered() && !aim) || resp.has_focus(), flush, t);
     if !open {
         return None;
     }
@@ -435,12 +442,14 @@ pub(super) fn indented_item(ui: &mut Ui, label: &str, shortcut: &str, enabled: b
     resp.clicked()
 }
 
-fn paint_submenu_row(ui: &mut Ui, r: Rect, label: &str, highlight: bool, t: &Tokens) {
+fn paint_submenu_row(ui: &mut Ui, r: Rect, label: &str, highlight: bool, flush: bool, t: &Tokens) {
     if highlight {
         ui.painter().rect_filled(r, CornerRadius::same(5), t.menu_hover);
     }
-    let galley = ui.painter().layout_no_wrap(label.to_string(), regular(12.0), t.menu_text);
-    need_width(ui, 28.0 + galley.size().x + 28.0);
-    ui.painter().galley(pos2(r.min.x + 28.0, r.center().y - galley.size().y / 2.0), galley, t.menu_text);
+    // Flush: as a plain row of a right-click menu draws its label (8 pt in, 11.5 pt, the text colour).
+    let (x, font, col) = if flush { (8.0, regular(11.5), if highlight { t.menu_text } else { t.text }) } else { (28.0, regular(12.0), t.menu_text) };
+    let galley = ui.painter().layout_no_wrap(label.to_string(), font, col);
+    need_width(ui, x + galley.size().x + 28.0);
+    ui.painter().galley(pos2(r.min.x + x, r.center().y - galley.size().y / 2.0), galley, col);
     icons::paint(ui.painter(), Rect::from_center_size(pos2(r.max.x - 12.0, r.center().y), vec2(12.0, 12.0)), Icon::ChevronRight, t.menu_text);
 }

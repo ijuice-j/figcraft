@@ -90,3 +90,23 @@ fn a_file_outside_any_workspace_shows_its_folder_and_an_unsaved_one_says_so() {
     assert!(texts(&mut u).iter().any(|t| t == &folder), "the folder's name");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn renaming_a_workspace_file_in_the_editor_renames_it_on_disk() {
+    let mut u = Ui::new(Session::new());
+    let root = scratch("rename");
+    add(&mut u, &root, "Studio");
+    crate::menus::invoke(&mut u.app, "file.new");
+    u.app.rename_file("Home screen");
+    let ds = u.app.session.ds().unwrap();
+    assert_eq!(ds.doc.name, "Home screen");
+    let path = ds.path.clone().unwrap();
+    assert!(path.ends_with("Home screen.figcraft") && Path::new(&path).is_file());
+    assert!(!root.join("Drafts").join("Untitled.figcraft").exists(), "renamed, not copied");
+    // Outside a workspace only the document's name changes.
+    u.app.run("file.new", json!({}));
+    u.app.rename_file("Loose");
+    assert_eq!(u.app.session.ds().unwrap().doc.name, "Loose");
+    assert_eq!(u.app.session.ds().unwrap().path, None);
+    let _ = std::fs::remove_dir_all(&root);
+}

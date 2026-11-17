@@ -157,7 +157,7 @@ pub fn left_panel(app: &mut FigApp, ui: &mut Ui) {
         let nr = Rect::from_min_max(pos2(head.min.x + 14.0, head.min.y + 14.0), pos2(head.max.x - 48.0, head.min.y + 34.0));
         let start = std::mem::take(&mut app.ui.rename_file);
         if let (Some(new), _) = crate::widgets::rename_field(ui, Id::unique("filename"), &name, nr, semibold(13.0), start) {
-            app.run("file.rename", json!({"name": new}));
+            app.rename_file(&new);
         }
         breadcrumb(app, ui, &t, Rect::from_min_max(pos2(head.min.x + 14.0, head.min.y + 38.0), pos2(head.max.x - 16.0, head.min.y + 54.0)));
     }

@@ -776,7 +776,7 @@ fn interact(ui: &Ui, resp: &Response, recents: &mut Recents, file: &Shown, menu:
             let others: Vec<&String> = projects.iter().filter(|p| !p.eq_ignore_ascii_case(&here)).collect();
             if !others.is_empty() {
                 let t = Tokens::get(ui.ctx());
-                let chosen = crate::menus::tree::submenu(ui, "workspace_move_to", tr("Move to"), &t, |ui| {
+                let chosen = crate::menus::tree::flush_submenu(ui, "workspace_move_to", tr("Move to"), &t, |ui| {
                     others.into_iter().find(|p| {
                         let label = if p.eq_ignore_ascii_case(figcraft_engine::workspace::DRAFTS) { tr("Drafts").to_string() } else { (*p).clone() };
                         crate::right::menu_item(ui, &label, "")

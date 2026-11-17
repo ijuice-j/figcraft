@@ -152,6 +152,23 @@ impl FigApp {
         }
     }
 
+    /// The file name in the editor renamed to `name`: a file in a workspace is renamed on disk too,
+    /// with its document, as Figma keeps a file's name and its title the same; any other file only
+    /// changes its document's name (one undo step).
+    pub fn rename_file(&mut self, name: &str) {
+        let path = self.session.ds().ok().and_then(|d| d.path.clone());
+        match path.filter(|p| crate::home_workspace::offered() && figcraft_engine::workspace::in_workspace(&self.session.prefs, p)) {
+            Some(file) if !name.trim().is_empty() => {
+                self.run("workspace.renameFile", json!({"file": file, "name": name}));
+                self.ui.home_view.workspace.relist();
+            }
+            Some(_) => {}
+            None => {
+                self.run("file.rename", json!({"name": name}));
+            }
+        }
+    }
+
     /// Pick a folder; `done` runs as [`FigApp::pick_open`]'s does.
     pub fn pick_folder(&mut self, title: &str, done: impl FnOnce(&mut FigApp, PathBuf) + 'static) {
         self.start_dialog(|services| services.pick_folder(title), true, done);

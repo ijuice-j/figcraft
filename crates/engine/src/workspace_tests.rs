@@ -195,7 +195,7 @@ fn moving_and_renaming_keep_open_tabs_recent_files_and_stars() {
 }
 
 #[test]
-fn deleting_is_refused_while_open_and_forgets_recent_files_and_stars() {
+fn deleting_closes_saved_tabs_refuses_unsaved_ones_and_forgets_recent_files_and_stars() {
     let root = scratch("delete");
     let mut session = with_workspace(&root, None);
     session.execute("workspace.newProject", &json!({"name": "Old"})).unwrap();
@@ -203,16 +203,25 @@ fn deleting_is_refused_while_open_and_forgets_recent_files_and_stars() {
     let path = made["path"].as_str().unwrap().to_string();
     session.execute("workspace.star", &json!({"file": path})).unwrap();
 
-    bad(session.execute("workspace.deleteFile", &json!({"file": path})), "close it first");
-    bad(session.execute("workspace.deleteProject", &json!({"project": "Old"})), "close it first");
-    session.execute("file.close", &json!({})).unwrap();
+    // Unsaved changes in its tab: nothing is closed or deleted.
+    session.execute("shape.rectangle", &json!({"x": 0, "y": 0, "width": 10, "height": 10})).unwrap();
+    bad(session.execute("workspace.deleteFile", &json!({"file": path})), "unsaved changes");
+    bad(session.execute("workspace.deleteProject", &json!({"project": "Old"})), "unsaved changes");
+    let tabs_of = |s: &Session, f: &str| s.docs.iter().filter(|d| d.path.as_deref().is_some_and(|p| p.starts_with(f))).count();
+    assert!(Path::new(&path).is_file() && tabs_of(&session, &path) == 1);
+    // Saved: its tab closes and it goes.
+    session.execute("file.save", &json!({})).unwrap();
     session.execute("workspace.deleteFile", &json!({"file": path})).unwrap();
+    assert_eq!(tabs_of(&session, &path), 0, "its tab closed");
     assert!(!Path::new(&path).exists());
     assert!(!session.prefs.recent_files.contains(&path));
     assert!(session.execute("workspace.files", &json!({"starred": true})).unwrap()["files"].as_array().unwrap().is_empty());
 
+    // A project's open (saved) files close with it.
+    session.execute("workspace.newFile", &json!({"project": "Old", "name": "Other"})).unwrap();
     session.execute("workspace.deleteProject", &json!({"project": "Old"})).unwrap();
     assert!(!root.join("Old").exists());
+    assert_eq!(tabs_of(&session, &root.join("Old").to_string_lossy()), 0);
     bad(session.execute("workspace.deleteProject", &json!({"project": "Drafts"})), "can't be deleted");
     let _ = std::fs::remove_dir_all(&root);
 }
