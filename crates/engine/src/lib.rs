@@ -25,6 +25,7 @@ pub mod guard;
 pub mod keymap;
 pub mod measure;
 pub mod proto_run;
+pub mod remove_bg;
 mod selection;
 mod sharing;
 pub mod workspace;
@@ -165,6 +166,8 @@ pub struct Session {
     pub agent: Option<String>,
     /// Where an attached AI agent last worked ([`Session::agent_presence_at`]): display only.
     pub agent_presence: Option<agent::AgentPresence>,
+    /// Remove background's remover and the removals under way ([`remove_bg`]).
+    pub remove_bg: remove_bg::State,
 }
 
 impl Default for Session {

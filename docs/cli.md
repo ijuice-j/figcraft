@@ -331,3 +331,21 @@ carry overrides at every level, in one file and as a library in another. It then
 table with the build time and edits of a deep main component (icon colour, glyph size, an added
 layer) and of the 72 button mains, where all copies follow. Zeros are dropped and counts above
 100,000 are capped to 100,000; `--instances 0` skips this table.
+
+## Remove background
+
+`image.removeBackground` cuts the subject out of a layer's image with the user's own background
+remover, a small Cloudflare Worker that Preferences ▸ AI tools installs in their Cloudflare
+account. The CLI and the MCP server have no preferences, so they read the remover from the
+environment:
+
+```sh
+export FIGCRAFT_REMOVER_URL=https://figcraft-bg.your-name.workers.dev
+export FIGCRAFT_REMOVER_KEY=…   # Preferences ▸ AI tools ▸ Copy address and key gives both
+echo '[{"command": "image.removeBackground", "params": {"ids": [12], "wait": true}}]' > cutout.json
+figcraft-cli run cutout.json --in design.figcraft --out design.figcraft
+```
+
+Pass `wait: true` to wait for the cut-out; without it the command returns `{state: "working", job}`
+and `{job}` puts the finished cut-out in the layer. `image.restoreOriginal` puts the photo back.
+The key is never a command parameter, so it never reaches the command journal.

@@ -73,6 +73,15 @@ pub trait Services {
     /// Keep the preferences now (the installed plugins or their settings changed), as the app
     /// does when it quits.
     fn save_prefs(&mut self, _prefs: &figcraft_engine::Prefs) {}
+    /// The secret kept under `name` (Remove background's access key), apart from the preferences,
+    /// if this platform keeps secrets and one is there.
+    fn secret(&self, _name: &str) -> Option<String> {
+        None
+    }
+    /// Keep `value` as the secret `name` (`None`: forget it).
+    fn set_secret(&mut self, _name: &str, _value: Option<&str>) -> Result<(), String> {
+        Err("this version of FigCraft can't keep secrets".into())
+    }
     /// The OS or browser language as a tag ("es-ES"), for the "system" language preference.
     fn system_language(&self) -> Option<String> {
         None

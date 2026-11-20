@@ -345,6 +345,10 @@ pub fn paint_images<'a>(paints: impl IntoIterator<Item = &'a Paint>, out: &mut B
     for p in paints {
         if let PaintKind::Image(img) = &p.kind {
             out.insert(img.image.clone());
+            // Remove background's original stays in the file so Restore original can bring it back.
+            if let Some(original) = &img.original {
+                out.insert(original.clone());
+            }
         }
     }
 }

@@ -28,7 +28,7 @@ impl FigApp {
         let within = |w: f32, range: std::ops::RangeInclusive<f32>| if w.is_finite() { w.clamp(*range.start(), *range.end()) } else { PANEL_DEFAULT };
         let (left_width, right_width) = (within(left_width, LEFT_PANEL), within(right_width, RIGHT_PANEL));
         let pages_height = session.prefs.pages_height;
-        Self {
+        let mut app = Self {
             ui: UiState { left_width, right_width, pages_height, ..UiState::default() },
             session,
             canvas: canvas::CanvasState::default(),
@@ -65,7 +65,10 @@ impl FigApp {
             updates_rt: updates_ui::Runtime::default(),
             #[cfg(test)]
             ime_observations: 0,
-        }
+        };
+        // The background remover the preferences name, with its key from the app's secrets.
+        crate::remove_bg_ui::load(&mut app);
+        app
     }
 
     /// UI-phase setup that needs a real current `Ui`: fonts/language/theme, interface zoom and the
@@ -238,6 +241,8 @@ impl FigApp {
         self.poll_dialog(&ctx);
         // Control requests run first so their results reflect this frame.
         crate::control::drain(self, &ctx);
+        // Finished background removals land before anything draws.
+        crate::remove_bg_ui::poll(self, &ctx);
         windows::requests(self, &ctx);
         selection_spacing::sync(self, &ctx);
         // Before any widget: the navigation keys (F6, Tab, arrows, Escape) move the keyboard.

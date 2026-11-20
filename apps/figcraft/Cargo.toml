@@ -33,6 +33,9 @@ arboard = { workspace = true, features = ["image-data", "wayland-data-control"] 
 webbrowser = { workspace = true }
 image = { workspace = true }
 env_logger = { version = "0.11", default-features = false, features = ["auto-color", "humantime"] }
+# Remove background's access key in the system's password store: Windows Credential Manager, the
+# macOS Keychain, the Secret Service on Linux and the BSDs (MIT OR Apache-2.0; pure Rust on Linux).
+keyring = { version = "4.2", default-features = false, features = ["v1"] }
 
 # The system's reduce-motion setting (UISettings.AnimationsEnabled), interface language
 # (GlobalizationPreferences.Languages) and controllers for prototypes (Gaming.Input.Gamepad).

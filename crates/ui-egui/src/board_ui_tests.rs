@@ -347,6 +347,8 @@ fn preferences_set_the_board_grid_and_the_default_dots_keep_their_size() {
     }
     u.app.session.ds_mut().unwrap().view.zoom = 1.0;
     u.app.ui.preferences = true;
+    // The board grid is under Canvas.
+    u.app.ui.prefs_group = crate::dialogs::PrefsGroup::Canvas;
     u.frame(vec![]);
     let shapes = flat(&u.frame_output(vec![]).shapes);
     assert!(has_text(&shapes, "Board grid") && has_text(&shapes, "Spacing"));

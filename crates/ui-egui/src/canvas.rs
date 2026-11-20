@@ -387,6 +387,7 @@ pub fn show(app: &mut FigApp, ui: &mut Ui, worker: &mut Worker) {
     crate::versions::preview_banner(app, &ctx, banners);
     crate::branch_ui::banner(app, &ctx, banners);
     crate::dev_mode::focus_bar(app, &ctx, banners);
+    crate::remove_bg_ui::banner(app, &ctx, banners);
     // The cursor: the tool's, unless something on the canvas with its own has the pointer.
     app.canvas.cursor = None;
     if let (true, Some(at)) = (own_cursor && resp.hovered(), ctx.input(|i| i.pointer.hover_pos())) {

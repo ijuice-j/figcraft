@@ -590,6 +590,24 @@ pub fn popups(app: &mut FigApp, ctx: &egui::Context) {
                 if crop && let Some(at) = entries.iter().position(|e| e.1 == "object.mask") {
                     entries.insert(at + 1, (tr("Crop image"), "image.crop"));
                 }
+                // One layer filled with an image can have its background removed, and then put back.
+                let image_layer = app.session.doc().ok().and_then(|doc| match app.session.selection().as_slice() {
+                    [id] => doc.node(*id).filter(|n| {
+                        !matches!(n.kind, figcraft_doc::NodeKind::Text { .. })
+                            && n.fills.iter().any(|f| f.visible && matches!(f.kind, figcraft_color::PaintKind::Image(_)))
+                    }),
+                    _ => None,
+                });
+                if let Some(n) = image_layer
+                    && let Some(at) = entries.iter().position(|e| e.1 == "object.mask")
+                {
+                    let at = at + usize::from(crop) + 1;
+                    let restore = n.fills.iter().any(|f| matches!(&f.kind, figcraft_color::PaintKind::Image(img) if img.original.is_some()));
+                    entries.insert(at, (tr("Remove background"), "image.removeBackground"));
+                    if restore {
+                        entries.insert(at + 1, (tr("Restore original image"), "image.restoreOriginal"));
+                    }
+                }
                 // An instance's actions reach its main component: replace "Create component" with
                 // "Go to main component" (as in Figma's context menu).
                 if app

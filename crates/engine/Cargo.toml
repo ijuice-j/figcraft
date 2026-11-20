@@ -40,6 +40,10 @@ craft-font-store = { workspace = true, features = ["bundled-index"] }
 craft-font-catalog = { workspace = true }
 # Workspaces delete files and projects to the system's Recycle Bin / Trash (MIT).
 trash = "5"
+# Remove background talks to the user's own Cloudflare Worker over HTTPS (MIT OR Apache-2.0; the
+# same ureq and rustls the font store already builds) and makes its random access key.
+ureq = { version = "3", default-features = false, features = ["rustls"] }
+getrandom = "0.4"
 
 [dev-dependencies]
 zip = { workspace = true }

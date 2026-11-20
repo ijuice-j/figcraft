@@ -811,6 +811,26 @@ fn image_controls(app: &mut FigApp, ui: &mut Ui, target: &PickerTarget, paint: &
             write(app, target, paint, false);
         }
     });
+    // A layer's own image fill: Remove background, or Restore original once it's been removed.
+    let own_image = crop_on_canvas(app, target)
+        .filter(|(id, _)| app.session.doc().ok().and_then(|d| d.node(*id)).is_some_and(|n| !matches!(n.kind, figcraft_doc::NodeKind::Text { .. })));
+    if let Some((id, index)) = own_image {
+        ui.horizontal(|ui| {
+            ui.add_space(16.0);
+            // One button: the picker is too narrow for two side by side.
+            let busy = app.session.remove_bg_working().iter().any(|w| w.node == id);
+            if img.original.is_some() {
+                if widgets::button(ui, tr("Restore original"), false, !busy).clicked() {
+                    app.run("image.restoreOriginal", json!({"ids": [id], "index": index}));
+                }
+            } else {
+                let label = if busy { tr("Removing background…") } else { tr("Remove background") };
+                if widgets::button(ui, label, false, !busy).clicked() {
+                    app.run("image.removeBackground", json!({"ids": [id], "index": index}));
+                }
+            }
+        });
+    }
     // The image's own colour profile (decoding converts it into the file's).
     let source = app.session.doc().ok().and_then(|d| figcraft_render::images::profile_name(&img.image, d.images.get(&img.image)));
     let source = match source.as_deref() {
