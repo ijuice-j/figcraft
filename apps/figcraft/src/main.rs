@@ -233,8 +233,14 @@ fn main() -> eframe::Result {
     session.live.links = figcraft_collab_net::links::system();
     session.invite_links_startup();
     let first_run = svc.prefs.is_none() && args.join.is_none();
-    if session.docs.is_empty() && opens_new_file(first_run, session.prefs.start_on_home, port.is_some()) {
-        let _ = session.execute("file.new", &json!({}));
+    let named = !args.files.is_empty() || args.join.is_some();
+    let mut reopened = figcraft_engine::reopen::Reopened::default();
+    match start_with(first_run, session.prefs.start_on_home, port.is_some(), named) {
+        Start::NewFile if session.docs.is_empty() => {
+            let _ = session.execute("file.new", &json!({}));
+        }
+        Start::Reopen => reopened = session.reopen_files(),
+        _ => {}
     }
     // The interface language from the first frame on, and for the message when the window can't
     // open (no frame then).
@@ -248,6 +254,18 @@ fn main() -> eframe::Result {
     fig.note_recovered(recovered.copies);
     if let Some(message) = failed_open {
         fig.show_error(message);
+    }
+    if !reopened.missing.is_empty() {
+        let names: Vec<String> = reopened
+            .missing
+            .iter()
+            .map(|p| std::path::Path::new(p).file_name().map_or_else(|| p.clone(), |n| n.to_string_lossy().into_owned()))
+            .collect();
+        fig.toast(figcraft_ui_egui::i18n::trn(
+            "{n} files open last time couldn't be opened again (moved or deleted): {names}",
+            names.len(),
+            &[("names", &names.join(", "))],
+        ));
     }
     if let Some(link) = &args.join {
         figcraft_ui_egui::live::open_invite(&mut fig, link);
@@ -325,12 +343,31 @@ fn main() -> eframe::Result {
     graphics.finish(result, frames, port.is_some())
 }
 
-/// With nothing to open, whether the window starts in a new file rather than on the home screen.
-/// A first run (no settings kept yet) shows the home screen's tips and templates, and later runs
-/// start in a new file unless the preference asks for Home, which `--control` overrides: its
-/// callers expect a document to act on.
-fn opens_new_file(first_run: bool, start_on_home: bool, control: bool) -> bool {
-    !first_run && (!start_on_home || control)
+/// What the window starts with besides the files named on the command line.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Start {
+    /// Nothing more: the named files, or the home screen when there are none.
+    Home,
+    /// The files open when the app last quit (the home screen when none opens).
+    Reopen,
+    /// A new, untitled file.
+    NewFile,
+}
+
+/// What the window starts with (fork). Named files (or an invite link) are what the user asked
+/// for, so nothing else opens with them. A first run (no settings kept yet) shows the home
+/// screen's tips and templates. Later runs open again the files open when the app last quit,
+/// unless the preference asks for Home; with none, the home screen shows. Only `--control`
+/// starts in a new file (when no named file opened): its callers expect a document to act on.
+fn start_with(first_run: bool, start_on_home: bool, control: bool, named: bool) -> Start {
+    match (named, control) {
+        (_, true) if first_run => Start::Home,
+        // Taken only when the named files didn't open.
+        (_, true) => Start::NewFile,
+        (true, false) => Start::Home,
+        (false, false) if first_run || start_on_home => Start::Home,
+        (false, false) => Start::Reopen,
+    }
 }
 
 /// The title bar FigCraft starts with, decided by the shared craft-window crate so every Craft app
@@ -426,13 +463,22 @@ mod title_bar_tests {
 
 #[cfg(test)]
 mod start_tests {
-    use super::opens_new_file;
+    use super::{Start, start_with};
 
     #[test]
-    fn the_home_preference_starts_on_home_except_for_control_callers() {
-        assert!(opens_new_file(false, false, false), "a new file by default");
-        assert!(!opens_new_file(false, true, false), "Home when the preference asks");
-        assert!(opens_new_file(false, true, true), "--control still starts with a document");
-        assert!(!opens_new_file(true, false, false), "a first run shows the home screen");
+    fn the_app_reopens_the_last_files_or_shows_home_never_a_new_file() {
+        assert_eq!(start_with(false, false, false, false), Start::Reopen, "the files open last time, by default");
+        assert_eq!(start_with(false, true, false, false), Start::Home, "Home when the preference asks");
+        assert_eq!(start_with(true, false, false, false), Start::Home, "a first run shows the home screen");
+        assert_eq!(start_with(false, false, false, true), Start::Home, "named files open by themselves");
+        assert_eq!(start_with(false, true, false, true), Start::Home);
+    }
+
+    #[test]
+    fn control_callers_still_start_with_a_document() {
+        assert_eq!(start_with(false, false, true, false), Start::NewFile);
+        assert_eq!(start_with(false, true, true, false), Start::NewFile, "--control overrides the Home preference");
+        assert_eq!(start_with(true, false, true, false), Start::Home, "but not a first run");
+        assert_eq!(start_with(false, false, true, true), Start::NewFile, "a new file only if the named ones didn't open");
     }
 }

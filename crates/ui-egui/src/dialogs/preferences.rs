@@ -149,8 +149,16 @@ fn general(app: &mut FigApp, ui: &mut Ui, t: &Tokens) {
     if !cfg!(target_arch = "wasm32") && crate::widgets::checkbox(ui, prefs.auto_save, tr("Save files automatically")) {
         toggles.push("pref.autoSave");
     }
-    if !cfg!(target_arch = "wasm32") && crate::widgets::checkbox(ui, prefs.start_on_home, tr("Start on the Home screen")) {
-        toggles.push("pref.startOnHome");
+    if !cfg!(target_arch = "wasm32") {
+        if crate::widgets::checkbox(ui, prefs.start_on_home, tr("Start on the Home screen")) {
+            toggles.push("pref.startOnHome");
+        }
+        let note = if prefs.start_on_home {
+            tr("FigCraft opens on the Home screen, with your recent files.")
+        } else {
+            tr("FigCraft opens the files you had open when it last closed, or the Home screen if there were none.")
+        };
+        crate::widgets::label(ui, note, t.text_secondary);
     }
     for c in toggles {
         app.run(c, json!({}));

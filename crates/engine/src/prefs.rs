@@ -63,8 +63,15 @@ pub struct Prefs {
     /// Files that have a path are saved by themselves a few seconds after they change (the app's
     /// timer; off: only File ▸ Save writes them).
     pub auto_save: bool,
-    /// The desktop app starts on the Home screen instead of in a new file.
+    /// The desktop app always starts on the Home screen. Off (the default), it opens again the
+    /// files that were open when it last quit ([`Self::open_files`]), and the Home screen when
+    /// there are none. It never starts in a new, untitled file.
     pub start_on_home: bool,
+    /// The saved files open in tabs when the desktop app last quit, in tab order, to open again
+    /// at the next start (fork: [`crate::reopen`]); at most
+    /// [`MAX_OPEN_FILES`](crate::reopen::MAX_OPEN_FILES).
+    #[serde(skip_serializing_if = "Vec::is_empty", deserialize_with = "crate::reopen::read")]
+    pub open_files: Vec<crate::reopen::OpenFile>,
     /// `figcraft://` invite links open this app (`collab.registerLinks`); `None`: on for installed
     /// builds, off for development builds.
     pub invite_links: Option<bool>,
@@ -164,6 +171,7 @@ impl Default for Prefs {
             ui_scale: 1.0,
             auto_save: false,
             start_on_home: false,
+            open_files: Vec::new(),
             invite_links: None,
             plugins: Vec::new(),
             plugin_settings: BTreeMap::new(),

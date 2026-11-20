@@ -26,6 +26,7 @@ pub mod keymap;
 pub mod measure;
 pub mod proto_run;
 pub mod remove_bg;
+pub mod reopen;
 mod selection;
 mod sharing;
 pub mod workspace;
@@ -536,6 +537,8 @@ mod proto_responsive_tests;
 mod proto_run_tests;
 #[cfg(test)]
 mod proto_tail_tests;
+#[cfg(test)]
+mod reopen_tests;
 #[cfg(test)]
 mod rest_slot_tests;
 #[cfg(test)]
