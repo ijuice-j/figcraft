@@ -332,6 +332,7 @@ pub use canvas::guides;
 pub use canvas::handles;
 pub use canvas::live_text;
 pub use canvas::measure_overlay;
+pub use canvas::place_images;
 pub use canvas::proto_canvas;
 pub use canvas::render_worker;
 use canvas::selection_spacing;
@@ -398,8 +399,8 @@ pub(crate) use clock::repaint_in;
 pub use clock::{AUTO_SAVE_SECS, AUTOSAVE_SECS, FrameClock, ToastClock};
 pub(crate) use open::{drop_overlay, dropped_bytes, is_document, opens};
 pub use services::{
-    ContentsFuture, DialogFuture, MAX_CLIPBOARD_PNG_BYTES, NoServices, ReadFuture, Services, browser_can_read, browser_stopped, egui_copy_png,
-    egui_copy_text, unreadable,
+    ContentsFuture, DialogFuture, MAX_CLIPBOARD_PNG_BYTES, ManyContentsFuture, ManyFuture, NoServices, ReadFuture, Services, browser_can_read,
+    browser_stopped, egui_copy_png, egui_copy_text, unreadable,
 };
 use services::{DialogDone, PickFuture, Picked, RepaintWaker};
 pub use state::{
@@ -534,6 +535,8 @@ pub struct UiState {
     /// of its document: layer ids are only unique within a document, and the pick holds only on
     /// the page shown ([`FigApp::picked`]).
     pub pick: Option<(u64, NodeId)>,
+    /// Images picked with Place image, loaded onto the cursor and placed one click at a time.
+    pub place: Option<place_images::Loaded>,
     /// Layers panel search: open, the filter text, the shift-click range anchor and the selection
     /// the tree last revealed (ancestors expand and the row scrolls into view when it changes).
     pub layer_search: bool,
@@ -719,6 +722,7 @@ impl Default for UiState {
             key_menu: false,
             key_box: None,
             pick: None,
+            place: None,
             layer_search: false,
             layer_filter: String::new(),
             layer_anchor: None,
@@ -873,6 +877,8 @@ pub struct FigApp {
 /// What to do with the result of a command run in the background.
 pub type Done = Box<dyn FnOnce(&mut FigApp, &egui::Context, Value)>;
 
+#[cfg(test)]
+mod place_images_tests;
 #[cfg(test)]
 mod selection_spacing_tests;
 #[cfg(test)]

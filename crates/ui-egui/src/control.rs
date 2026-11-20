@@ -1378,6 +1378,18 @@ fn ui_set_styles(app: &mut FigApp, p: &Value) -> Result<(), String> {
     if let Some(v) = p.get("stylePickerView").and_then(Value::as_str) {
         app.ui.style_grid = v == "grid";
     }
+    // Place image's loaded cursor without its file dialog: image paths load onto the cursor as
+    // picked ones do (an empty list or null discards them). The files are read when shown and
+    // placed, through the same checks as any path a request names.
+    if let Some(v) = p.get("placeImages") {
+        let paths: Vec<crate::services::Picked> =
+            v.as_array().into_iter().flatten().filter_map(Value::as_str).take(256).map(|s| crate::services::Picked::Path(s.into())).collect();
+        if paths.is_empty() {
+            app.ui.place = None;
+        } else {
+            crate::place_images::load(app, crate::services::Picked::Many(paths));
+        }
+    }
     // The Color profile dialog: a profile id opens it with that profile chosen, null closes it.
     if let Some(v) = p.get("colorProfileDialog") {
         app.ui.color_profile = v.as_str().and_then(figcraft_color::ColorProfile::parse);

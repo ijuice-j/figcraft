@@ -344,7 +344,7 @@ separate calls. Returns `{queued}`.
 
 Invoke a menu item exactly like clicking it (this may open a dialog). Returns `{ok, lastError}`.
 
-### `ui.set {rightTab?, leftTab?, theme?, home?, homeSection?, homeSearch?, homeRecentsView?, homeRecentsSort?, homeRecentsOrder?, palette?, mainMenu?, focusRegion?, colorPicker?, variables?, layerFilter?, collapseLayers?, exportPreview?, preview?, presentScroll?, colorProfileDialog?, stylePicker?, stylePickerEdit?, stylePickerView?, iconGallery?, protoEditor?, contextMenu?, contextSelectLayer?, commentOpen?, commentDraft?, commentFilter?, commentSort?, commentSearch?, commentReply?, commentEdit?, presentComments?, devCompare?, devCompareMode?, devCompareSplit?, annotationFilter?, resetFrameStats?, pluginsWindow?, pluginsTab?, pluginConfirm?, pluginForm?, devCompareVersion?}`
+### `ui.set {rightTab?, leftTab?, theme?, home?, homeSection?, homeSearch?, homeRecentsView?, homeRecentsSort?, homeRecentsOrder?, palette?, mainMenu?, focusRegion?, colorPicker?, variables?, layerFilter?, collapseLayers?, exportPreview?, preview?, presentScroll?, colorProfileDialog?, stylePicker?, stylePickerEdit?, stylePickerView?, iconGallery?, protoEditor?, contextMenu?, contextSelectLayer?, commentOpen?, commentDraft?, commentFilter?, commentSort?, commentSearch?, commentReply?, commentEdit?, presentComments?, devCompare?, devCompareMode?, devCompareSplit?, annotationFilter?, resetFrameStats?, pluginsWindow?, pluginsTab?, pluginConfirm?, pluginForm?, devCompareVersion?, placeImages?}`
 
 Switch panels and modes: `rightTab` `design|prototype|inspect`, `leftTab` `file|assets`, `theme`,
 `home` (bool), `homeSection` (`recents`, `online` or `templates`: which section the home screen shows, as `ui.inspect` reports it; opening
@@ -370,7 +370,9 @@ to what it can scroll), `colorProfileDialog` (`srgb|displayP3`: open File ▸ Co
 profile chosen; `null` closes it), `stylePicker` (`fill|stroke|effect|grid|text`: open the style
 picker for the selection, `text` being the text style browser of the Typography section; `null`
 closes it) with `stylePickerEdit` (a style id or name: open its editor), `stylePickerView`
-(`list|grid`), `protoEditor` (`[layer id, interaction index]`: open that interaction's editor in the
+(`list|grid`), `placeImages` (image paths: load them onto Place image's cursor as its
+file dialog would, without the dialog; then clicks and drags on the canvas place them, and `ui.inspect`
+reports how many are left as `placeImages`; `[]` or `null` discards them), `protoEditor` (`[layer id, interaction index]`: open that interaction's editor in the
 Prototype panel; `null` closes it), `contextMenu` (`[sx, sy]`: right-click the canvas at that screen
 point, selecting what is under it (with `cmd: true`, the nested layer) and opening the context menu;
 `null` closes it), `contextSelectLayer` (bool: open the context menu's Select layer submenu, which

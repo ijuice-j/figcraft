@@ -258,6 +258,16 @@ impl Services for WebServices {
             })
         }))
     }
+    /// [`Self::pick_open_contents`] with `multiple` set: every picked file is read.
+    fn pick_open_many_contents(&mut self, _title: &str, exts: &[&str]) -> Option<figcraft_ui_egui::ManyContentsFuture> {
+        let accept = exts.iter().map(|e| format!(".{e}")).collect::<Vec<_>>().join(",");
+        Some(Box::pin(async move {
+            pick_files(&accept).await.unwrap_or_else(|e| {
+                log::error!("couldn't open files: {e:?}");
+                None
+            })
+        }))
+    }
     fn downloads(&self) -> bool {
         true
     }
@@ -365,6 +375,38 @@ async fn pick_file(accept: &str) -> Result<Option<Result<(String, Vec<u8>), Stri
     let Some(file) = file else { return Ok(None) };
     Ok(Some(read_file(&file).await.map(|bytes| (file.name(), bytes))))
 }
+
+/// Files picked in a file picker that takes several (Place image), each read; `None` when none
+/// was picked. At most [`MAX_PICKED_FILES`] are read.
+async fn pick_files(accept: &str) -> Result<Option<Vec<Result<(String, Vec<u8>), String>>>, wasm_bindgen::JsValue> {
+    let window = web_sys::window().ok_or("no window")?;
+    let document = window.document().ok_or("no document")?;
+    let body = document.body().ok_or("no body")?;
+    let input: web_sys::HtmlInputElement = document.create_element("input")?.dyn_into()?;
+    input.set_type("file");
+    input.set_accept(accept);
+    input.set_multiple(true);
+    input.set_hidden(true);
+    body.append_child(&input)?;
+    let (closed, picker) = PickerClosed::new(&window, input.clone());
+    input.click();
+    let result = wasm_bindgen_futures::JsFuture::from(closed).await;
+    let files: Vec<web_sys::File> =
+        input.files().map(|list| (0..list.length().min(MAX_PICKED_FILES)).filter_map(|i| list.get(i)).collect()).unwrap_or_default();
+    drop(picker);
+    result?;
+    if files.is_empty() {
+        return Ok(None);
+    }
+    let mut out = Vec::with_capacity(files.len());
+    for file in &files {
+        out.push(read_file(file).await.map(|bytes| (file.name(), bytes)));
+    }
+    Ok(Some(out))
+}
+
+/// The most files one Place image reads in the browser.
+const MAX_PICKED_FILES: u32 = 200;
 
 /// The contents of a file the browser handed over, or why they can't be read.
 pub(crate) async fn read_file(file: &web_sys::File) -> Result<Vec<u8>, String> {

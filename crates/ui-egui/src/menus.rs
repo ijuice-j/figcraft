@@ -102,7 +102,7 @@ pub fn invoke(app: &mut FigApp, id: &str) {
         "help.checkForUpdates" | "app.checkForUpdates" => crate::updates_ui::check(app),
         "plugin.import" => crate::plugins_ui::import_dialog(app),
         "file.import" => app.import_dialog(false),
-        "file.placeImage" => app.import_dialog(true),
+        "file.placeImage" => app.place_dialog(),
         "file.save" => app.save(),
         "file.saveAs" => app.save_as_dialog(),
         "file.openRecent" => {

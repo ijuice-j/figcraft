@@ -42,6 +42,7 @@ pub mod guides;
 pub mod handles;
 pub mod live_text;
 pub mod measure_overlay;
+pub mod place_images;
 pub mod proto_canvas;
 pub mod render_worker;
 pub(crate) mod selection_spacing;
@@ -375,6 +376,7 @@ pub fn show(app: &mut FigApp, ui: &mut Ui, worker: &mut Worker) {
     crate::board_facilitate::show(app, &ctx, rect);
     crate::widget_bar::show(app, &ctx);
     crate::selection_spacing::draw(app, &painter);
+    crate::place_images::draw(app, &painter);
     crate::comments::draw(app, &painter);
     crate::live_text::draw(app, &painter);
     crate::live::draw(app, &painter, &ctx);
@@ -387,6 +389,7 @@ pub fn show(app: &mut FigApp, ui: &mut Ui, worker: &mut Worker) {
     crate::versions::preview_banner(app, &ctx, banners);
     crate::branch_ui::banner(app, &ctx, banners);
     crate::dev_mode::focus_bar(app, &ctx, banners);
+    crate::place_images::banner(app, &ctx, banners);
     // The cursor: the tool's, unless something on the canvas with its own has the pointer.
     app.canvas.cursor = None;
     if let (true, Some(at)) = (own_cursor && resp.hovered(), ctx.input(|i| i.pointer.hover_pos())) {

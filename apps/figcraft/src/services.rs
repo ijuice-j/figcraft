@@ -6,7 +6,7 @@ use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use std::sync::{Arc, Mutex};
 
 use figcraft_engine::{Prefs, Session};
-use figcraft_ui_egui::{DialogFuture, FigApp, Services};
+use figcraft_ui_egui::{DialogFuture, FigApp, ManyFuture, Services};
 use serde_json::{Value, json};
 
 pub struct Desktop {
@@ -484,6 +484,17 @@ impl Services for Desktop {
     fn pick_open(&mut self, title: &str, exts: &[&str]) -> DialogFuture {
         let pick = picked(self.dialog_in_last_folder(title).add_filter("Supported files", exts).pick_file());
         remembering(self.last_folder.clone(), pick, false)
+    }
+    fn pick_open_many(&mut self, title: &str, exts: &[&str]) -> ManyFuture {
+        let pick = self.dialog_in_last_folder(title).add_filter("Supported files", exts).pick_files();
+        let last = self.last_folder.clone();
+        Box::pin(async move {
+            let paths: Vec<PathBuf> = pick.await?.into_iter().map(|f| f.path().to_path_buf()).collect();
+            if let (Some(folder), Ok(mut last)) = (paths.first().and_then(|p| folder_to_remember(p, false)), last.lock()) {
+                *last = Some(folder);
+            }
+            (!paths.is_empty()).then_some(paths)
+        })
     }
     fn pick_save(&mut self, title: &str, name: &str, exts: &[&str]) -> DialogFuture {
         let mut dialog = self.dialog_in_last_folder(title).set_file_name(name);

@@ -428,6 +428,11 @@ fn key_event(app: &mut FigApp, key: Key, physical: Option<Key>, m: Modifiers, re
     if key == Key::Escape && crate::selection_spacing::cancel(app, ctx) {
         return true;
     }
+    // Images loaded with Place image: Escape or Delete discards them, before the bindings deselect
+    // or delete layers.
+    if matches!(key, Key::Escape | Key::Delete | Key::Backspace) && m.is_none() && crate::place_images::discard(app) {
+        return true;
+    }
     // The colour picker open: Escape closes it here, before the binding deselects — unless one of
     // its own dropdowns is open, which takes this Escape.
     if key == Key::Escape && !egui::Popup::is_any_open(ctx) && crate::colorpicker::close_if_open(app) {

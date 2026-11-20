@@ -92,6 +92,30 @@ impl FigApp {
         });
     }
 
+    /// Place image (Shift+Cmd+K): pick one or more images, which load onto the cursor to be placed
+    /// one click at a time ([`crate::place_images`]).
+    pub fn place_dialog(&mut self) {
+        let exts: &[&str] = crate::place_images::EXTENSIONS;
+        let title = i18n::tr("Place image");
+        self.start_pick(
+            |services| -> PickFuture {
+                match services.pick_open_many_contents(title, exts) {
+                    Some(read) => Box::pin(async move {
+                        read.await.map(|all| {
+                            Picked::Many(all.into_iter().map(|r| r.map_or_else(Picked::Unreadable, |(n, b)| Picked::Contents(n, b))).collect())
+                        })
+                    }),
+                    None => {
+                        let pick = services.pick_open_many(title, exts);
+                        Box::pin(async move { pick.await.map(|paths| Picked::Many(paths.into_iter().map(Picked::Path).collect())) })
+                    }
+                }
+            },
+            true,
+            crate::place_images::load,
+        );
+    }
+
     /// Pick a file to open or import; `done` gets it as `file.open` and `file.import` take it (a
     /// path, or the name and contents where the platform has no paths). `pin`: as
     /// [`FigApp::pick_open`]'s file in front.

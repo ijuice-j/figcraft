@@ -291,6 +291,7 @@ name = "English"
 "Click or drag to merge · {alt} removes" = "Click or drag to merge · {alt} removes"
 "Click or drag to remove · {alt} merges" = "Click or drag to remove · {alt} merges"
 "Click to record a key" = "Click to record a key"
+"Click to place, drag to size, click a shape to fill it" = "Click to place, drag to size, click a shape to fill it"
 "Clip content" = "Clip content"
 "Clip to shape" = "Clip to shape"
 "Close" = "Close"
@@ -1204,6 +1205,7 @@ name = "English"
 "Pixel preview 1x" = "Pixel preview 1x"
 "Pixel preview 2x" = "Pixel preview 2x"
 "Place a shape or frame (its tool chosen)" = "Place a shape or frame (its tool chosen)"
+"Place all" = "Place all"
 "Place automatically" = "Place automatically"
 "Place image" = "Place image"
 "Plugin" = "Plugin"
@@ -2026,6 +2028,7 @@ name = "English"
 "{n} inserted" = { one = "{n} inserted", other = "{n} inserted" }
 "{n} instances" = { one = "{n} instance", other = "{n} instances" }
 "{n} layers" = { one = "{n} layer", other = "{n} layers" }
+"{n} images to place" = { one = "{n} image to place", other = "{n} images to place" }
 "{n} layers as one file" = { one = "{n} layer as one file", other = "{n} layers as one file" }
 "{n} layers selected" = { one = "{n} layer selected", other = "{n} layers selected" }
 "{n} layers · {parts}" = { one = "{n} layer · {parts}", other = "{n} layers · {parts}" }
