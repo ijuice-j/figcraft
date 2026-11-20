@@ -2154,3 +2154,6 @@ name = "English"
 "Working. A sample picture came back without its background in {seconds} seconds." = "Working. A sample picture came back without its background in {seconds} seconds."
 "Your name, language and how files are kept." = "Your name, language and how files are kept."
 "{account} already has a background remover named figcraft-bg, perhaps from FigCraft on another computer. Replace it? FigCraft on other computers will need to connect again." = "{account} already has a background remover named figcraft-bg, perhaps from FigCraft on another computer. Replace it? FigCraft on other computers will need to connect again."
+"FigCraft opens on the Home screen, with your recent files." = "FigCraft opens on the Home screen, with your recent files."
+"FigCraft opens the files you had open when it last closed, or the Home screen if there were none." = "FigCraft opens the files you had open when it last closed, or the Home screen if there were none."
+"{n} files open last time couldn't be opened again (moved or deleted): {names}" = { one = "{n} file open last time couldn't be opened again (moved or deleted): {names}", other = "{n} files open last time couldn't be opened again (moved or deleted): {names}" }
