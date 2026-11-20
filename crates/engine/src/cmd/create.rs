@@ -113,7 +113,7 @@ pub fn specs() -> Vec<CommandSpec> {
         spec!(
             "image.place",
             "Place image",
-            "{data (base64) | path, x?, y?, width?, height?, parent?, name? (default Image), target? (an existing layer: the image is added on top of its fills instead of making a layer), mode? (fill|fit|crop|tile)} → {id, image, width, height, imageProfile (its embedded colour profile; null: taken as sRGB)}",
+            "{data (base64) | path, x?, y?, width?, height?, parent?, name? (default Image), target? (an existing layer: the image is added on top of its fills instead of making a layer), click? (x, y are a page point: the image fills the shape under it, else goes into the frame under it with its top-left corner there; with width, always a layer), mode? (fill|fit|crop|tile)} → {id, image, width, height, imageProfile (its embedded colour profile; null: taken as sRGB)}",
             true,
             place_image
         ),
@@ -476,10 +476,65 @@ fn add_image_fill(node: &mut Node, image: String, mode: ImageScaleMode) {
     node.styles.fill = None;
 }
 
+/// Where a click with images loaded on the cursor (Place image) puts the next one.
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum ClickPlace {
+    /// The shape under the pointer takes the image as a fill.
+    Fill(NodeId),
+    /// A new image layer in `parent`, at `index` among its children (an auto layout slot; `None`:
+    /// on top), its top-left corner at `x, y` in the parent's coordinates.
+    Layer { parent: NodeId, index: Option<usize>, x: f64, y: f64 },
+}
+
+/// Whether a click with an image on a layer of `kind` fills it rather than placing a layer over it:
+/// shapes that draw a fill (not lines) and boolean groups. Frames take a new image layer inside
+/// them, as other placed layers do; text keeps its fills.
+fn click_fills(kind: &NodeKind) -> bool {
+    (kind.is_shape() && !matches!(kind, NodeKind::Line)) || matches!(kind, NodeKind::BooleanOp { .. })
+}
+
+/// Where a click at page point `at` puts an image: onto the fillable shape under it, else into the
+/// frame or section under it (the page when none). `fill`: false for a drag, which always makes a
+/// layer.
+fn click_place(s: &Session, at: Point, fill: bool) -> Result<ClickPlace> {
+    let doc = s.doc()?;
+    let page = s.page()?;
+    if fill {
+        let tol = 1.0 / s.ds()?.view.zoom.max(1e-6);
+        if let Some(id) = s.hit(doc, page, at, tol).filter(|id| doc.node(*id).is_some_and(|n| click_fills(&n.kind))) {
+            return Ok(ClickPlace::Fill(id));
+        }
+    }
+    let slot = crate::drop::slot(doc, page, at);
+    let local = doc.world_transform(slot.parent).inverse() * at;
+    if !local.x.is_finite() || !local.y.is_finite() {
+        return Err(bad("image.place", "the layer under the pointer can't take an image there"));
+    }
+    Ok(ClickPlace::Layer { parent: slot.parent, index: slot.index, x: local.x, y: local.y })
+}
+
 /// Place an image as a rectangle with an image fill (Figma's image layer).
 pub fn place_image(s: &mut Session, p: &Value) -> Result<Value> {
     let cmd = "image.place";
-    let target = opt_id(cmd, p, "target")?;
+    // `click`: x, y are a page point and the image goes where a click there with Place image puts
+    // it ([`click_place`]); a drag (`width` given) always makes a layer there.
+    let click = if boolean(p, "click").unwrap_or(false) {
+        if get(p, "target").is_some() || get(p, "parent").is_some() {
+            return Err(bad(cmd, "`click` decides the target or parent itself: leave `target` and `parent` out"));
+        }
+        let at = Point::new(num_or(p, "x", 0.0), num_or(p, "y", 0.0));
+        if !at.x.is_finite() || !at.y.is_finite() {
+            return Err(bad(cmd, "`x` and `y` must be finite"));
+        }
+        Some(click_place(s, at, num(p, "width").is_none())?)
+    } else {
+        None
+    };
+    let target = match click {
+        Some(ClickPlace::Fill(id)) => Some(id),
+        Some(ClickPlace::Layer { .. }) => None,
+        None => opt_id(cmd, p, "target")?,
+    };
     if let Some(id) = target {
         let node = s.doc()?.node(id).ok_or(crate::EngineError::NoNode(id))?;
         if !accepts_image_fill(&node.kind) {
@@ -502,7 +557,10 @@ pub fn place_image(s: &mut Session, p: &Value) -> Result<Value> {
         return Ok(json!({"id": id, "image": hash, "width": node.width, "height": node.height, "imageProfile": profile}));
     }
     let page = s.page()?;
-    let parent = crate::params::opt_id(cmd, p, "parent")?.unwrap_or(page);
+    let (parent, index, at) = match click {
+        Some(ClickPlace::Layer { parent, index, x, y }) => (parent, index, (x, y)),
+        _ => (crate::params::opt_id(cmd, p, "parent")?.unwrap_or(page), None, (num_or(p, "x", 0.0), num_or(p, "y", 0.0))),
+    };
     let ds = s.ds_mut()?;
     let doc = ds.doc_mut();
     let density = figcraft_format::pixel_density(&bytes);
@@ -514,9 +572,9 @@ pub fn place_image(s: &mut Session, p: &Value) -> Result<Value> {
     let nid = doc.alloc_id();
     let name = string(p, "name").unwrap_or_else(|| "Image".into());
     let mut node = Node::new(nid, NodeKind::Rectangle, name, w, h);
-    node.transform = figcraft_geom::Affine::translate((num_or(p, "x", 0.0), num_or(p, "y", 0.0)));
+    node.transform = figcraft_geom::Affine::translate(at);
     node.fills = vec![Paint::image(hash.clone(), mode)];
-    doc.insert(node, parent, None)?;
+    doc.insert(node, parent, index)?;
     ds.selection = vec![nid];
     let _ = ok;
     Ok(json!({"id": nid, "image": hash, "width": w, "height": h, "imageProfile": profile}))

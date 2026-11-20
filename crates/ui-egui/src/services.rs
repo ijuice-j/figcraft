@@ -12,6 +12,18 @@ pub trait Services {
     fn pick_open_contents(&mut self, _title: &str, _exts: &[&str]) -> Option<ContentsFuture> {
         None
     }
+    /// Pick one or more files (Place image). By default one, through [`Services::pick_open`].
+    fn pick_open_many(&mut self, title: &str, exts: &[&str]) -> ManyFuture {
+        let one = self.pick_open(title, exts);
+        Box::pin(async move { one.await.map(|p| vec![p]) })
+    }
+    /// [`Services::pick_open_many`] where the platform hands over contents rather than paths (the
+    /// browser). By default one file, through [`Services::pick_open_contents`]; `None` where the
+    /// platform picks paths.
+    fn pick_open_many_contents(&mut self, title: &str, exts: &[&str]) -> Option<ManyContentsFuture> {
+        let one = self.pick_open_contents(title, exts)?;
+        Some(Box::pin(async move { one.await.map(|r| vec![r]) }))
+    }
     fn pick_save(&mut self, _title: &str, _name: &str, _exts: &[&str]) -> DialogFuture {
         Box::pin(std::future::ready(None))
     }
@@ -108,6 +120,13 @@ pub type DialogFuture = Pin<Box<dyn Future<Output = Option<PathBuf>>>>;
 /// was cancelled, `Err` with what to tell the user when the file couldn't be read.
 pub type ContentsFuture = Pin<Box<dyn Future<Output = Option<Result<(String, Vec<u8>), String>>>>>;
 
+/// Several picked files ([`Services::pick_open_many`]); `None` when the picker was cancelled.
+pub type ManyFuture = Pin<Box<dyn Future<Output = Option<Vec<PathBuf>>>>>;
+
+/// Several picked files' names and contents ([`Services::pick_open_many_contents`]), each as
+/// [`ContentsFuture`] gives one.
+pub type ManyContentsFuture = Pin<Box<dyn Future<Output = Option<Vec<Result<(String, Vec<u8>), String>>>>>>;
+
 /// A dropped file's contents, read once they arrive (`Err`: what to tell the user when they
 /// couldn't be read).
 pub type ReadFuture = Pin<Box<dyn Future<Output = Result<Vec<u8>, String>>>>;
@@ -122,6 +141,8 @@ pub(crate) enum Picked {
     Path(PathBuf),
     Contents(String, Vec<u8>),
     Unreadable(String),
+    /// Several files at once (Place image), each one of the above.
+    Many(Vec<Picked>),
 }
 
 impl Picked {
@@ -134,6 +155,8 @@ impl Picked {
                 Ok(json!({"data": base64::engine::general_purpose::STANDARD.encode(&bytes), "name": name}))
             }
             Picked::Unreadable(why) => Err(why),
+            // A single-file continuation given several takes the first.
+            Picked::Many(all) => all.into_iter().next().map_or_else(|| Err(String::new()), Picked::file_params),
         }
     }
 }

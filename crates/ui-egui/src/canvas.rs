@@ -42,6 +42,7 @@ pub mod guides;
 pub mod handles;
 pub mod live_text;
 pub mod measure_overlay;
+pub mod place_images;
 pub mod proto_canvas;
 pub mod render_worker;
 pub(crate) mod selection_spacing;
@@ -375,6 +376,7 @@ pub fn show(app: &mut FigApp, ui: &mut Ui, worker: &mut Worker) {
     crate::board_facilitate::show(app, &ctx, rect);
     crate::widget_bar::show(app, &ctx);
     crate::selection_spacing::draw(app, &painter);
+    crate::place_images::draw(app, &painter);
     crate::comments::draw(app, &painter);
     crate::live_text::draw(app, &painter);
     crate::live::draw(app, &painter, &ctx);
@@ -383,6 +385,7 @@ pub fn show(app: &mut FigApp, ui: &mut Ui, worker: &mut Worker) {
     // The other banners float below the strip that says the session is disconnected.
     let banners = rect.with_min_y(rect.min.y + crate::live::connection_banner(app, &ctx, rect));
     crate::live::spotlight_banner(app, &ctx, banners);
+    crate::place_images::banner(app, &ctx, banners);
     crate::comments::popovers(app, &ctx);
     crate::versions::preview_banner(app, &ctx, banners);
     crate::branch_ui::banner(app, &ctx, banners);

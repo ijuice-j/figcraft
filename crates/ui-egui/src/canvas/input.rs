@@ -271,6 +271,10 @@ pub(super) fn input(app: &mut FigApp, ui: &mut Ui, resp: &egui::Response) -> boo
         pan_view(app, &ctx, pos, &mods, middle_down);
         return true;
     }
+    // Images loaded with Place image: a click places the next one, a drag sizes it.
+    if !app.canvas.dragging && crate::place_images::input(app, &ctx, pos, resp.hovered()) {
+        return false;
+    }
     // A handle drag whose button went up ends first, wherever on the canvas the pointer is: over a
     // ruler or a comment pin, which take the pointer below, or over something drawn above the
     // canvas (the colour picker, a card). The handle had the press, so it has the release too.

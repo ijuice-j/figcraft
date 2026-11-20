@@ -161,7 +161,7 @@ pub fn specs() -> Vec<CommandSpec> {
         spec!(
             "file.placeImage",
             "Place image",
-            "{path | data, x?, y?, width?, height?, parent?, name?, target?, mode? (as image.place)}",
+            "{path | data, x?, y?, width?, height?, parent?, name?, target?, click?, mode? (as image.place)}",
             true,
             super::create::place_image
         ),

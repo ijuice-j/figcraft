@@ -202,6 +202,14 @@ No alpha blockers: the alpha gate in [`roadmap.md`](roadmap.md#alpha-gate) passe
   Layers; Paste over and Paste properties from the keyboard; then (#753) Selection colors for mixed
   selections and smart-selection spacing fields, canvas handles and reorder rings. Each was checked in the app (on
   Windows; the submenus by their author), none side by side with Figma, none on macOS.
+- **Landed (2026-11-20, fork):** Place image (Shift+Cmd/Ctrl+K) loads the picked images onto the
+  cursor, a thumbnail with how many are left, rather than placing them at once: a click places the
+  next at its size with its corner at the click (inside the frame clicked), a drag sizes it in
+  proportion, a click on a shape fills it, Place all lines up the rest and Escape or Delete
+  discards them (`file.placeImage`'s `click`; `place_click_tests`, `place_images_tests`). Several
+  files can be picked on the desktop and in the browser. Smart selection's reorder rings are white
+  dots with a pink edge, solid pink when hovered, so they show on any fill, including for layers
+  inside a group (`smart_select_group_tests`). Checked in the app on Windows, not side by side.
 - **Evidence:** ROADMAP item 7 ("Left: tool by tool, panel by panel against the incumbent").
 - **Impact:** Figma users notice the feel within minutes; it decides whether they stay.
 - **Estimate:** 40–60 h. Detail in [`ui-parity.md`](ui-parity.md).
@@ -605,6 +613,7 @@ No alpha blockers: the alpha gate in [`roadmap.md`](roadmap.md#alpha-gate) passe
 | 2026-11-18 | minor | Gap 19: Remove background landed (the user's own Cloudflare Worker, set up from Preferences ▸ AI tools; Restore original). AI features 0% → 5% |
 | 2026-11-12 | minor | Gap 1: the `.fig` export writes vector region paints (#2302); the 2026-10-26 "Landed" bullet no longer says the export drops them |
 | 2026-11-10 | minor | Gap 13: a boolean group's corner radius rounds every sharp corner of its result (#2222); the boolean clause leaves the 2026-10-12 "Left" list |
+| 2026-11-20 | minor | Gap 4 (fork): Place image loads the picked images onto the cursor (click places, drag sizes, a click on a shape fills it, Place all, Escape discards); smart selection's reorder rings show on any fill, inside groups too. Estimate unchanged |
 | 2026-11-10 | minor | Gap 24: mind maps, first step (`board.mindMap`, `board.mindMapAdd`; the map lays itself out again after every edit, #2226); the toolbar entry, shortcuts, drag to re-parent and `.jam` import are what is missing of them. |
 | 2026-11-03 | minor | Traditional Chinese (Taiwan) (`zh-Hant`) draft catalog: 1,975 UI strings, 641 command labels and 31 menu wordings, clean-room from the English source; zh-TW, zh-HK, zh-MO and zh-Hant read it, explicit Hans stays Simplified; Noto Sans CJK TC then Taiwan system faces; no bundled font; native review pending. Numbers unchanged |
 | 2026-10-31 | minor | Gap 10: library analytics list the layers and files using each style and variable; their insertions, detachments and modes stay on the missing list. |
