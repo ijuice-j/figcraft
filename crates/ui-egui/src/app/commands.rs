@@ -54,6 +54,13 @@ impl FigApp {
 
     /// Show command `id`'s error.
     pub(crate) fn failed(&mut self, id: &str, e: &figcraft_engine::EngineError) {
+        if id == "image.removeBackground" {
+            // The card that offers to connect a remover says it all; other reasons as a sentence.
+            if !self.ui.remove_bg_setup {
+                self.show_error(crate::remove_bg_ui::message(e));
+            }
+            return;
+        }
         let msg = e.to_string();
         // A plugin's failure text may carry CR or terminal controls: log it escaped.
         log::warn!("{id}: {}", msg.escape_debug());
@@ -126,6 +133,8 @@ impl FigApp {
                     self.ui.about_tab = dialogs::AboutTab::About;
                 }
                 "dialog.preferences" => self.ui.preferences = true,
+                // Remove background with no remover connected: the card that offers to set one up.
+                "image.removeBackground" if r.data.get("setup").and_then(Value::as_bool) == Some(true) => self.ui.remove_bg_setup = true,
                 "dialog.missingFonts" => missing_fonts::request(self),
                 "dialog.createFromColor" => crate::sampled_color::request(self, &r.data),
                 "panel.shortcuts" => self.ui.shortcuts_panel = !self.ui.shortcuts_panel,

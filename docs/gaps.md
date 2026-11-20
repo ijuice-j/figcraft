@@ -545,8 +545,15 @@ No alpha blockers: the alpha gate in [`roadmap.md`](roadmap.md#alpha-gate) passe
   `figcraft://comments`), a bounded in-memory event log, `events.poll` and `wait_for_changes` for
   live feedback. Any MCP client can drive a headless file or an attached app; no in-app model and no
   network dependency.
-- **Missing:** Figma AI (first draft, rename layers, remove background, image generation and
-  editing, visual search, Make).
+- **Landed (2026-11-18, fork):** Remove background (`image.removeBackground`, right-click menu,
+  the image fill's settings, the Actions palette) and Restore original image
+  (`image.restoreOriginal`). The cut-out comes from a Cloudflare Worker in the user's own free
+  Cloudflare account (Cloudflare Images' foreground segmentation); Preferences ▸ AI tools installs
+  it from one pasted Cloudflare API key, or takes an address and access key by hand. Full size,
+  the original kept in the file, one undo step, desktop only. The CLI and MCP server read
+  `FIGCRAFT_REMOVER_URL` and `FIGCRAFT_REMOVER_KEY`.
+- **Missing:** Figma AI (first draft, rename layers, image generation and editing, visual search,
+  Make); Remove background in the browser build and on several layers at once.
 - **Estimate:** 30–60 h with openly licensed local models. **Owner decision needed.**
 
 ### 20. Mobile apps
@@ -595,6 +602,7 @@ No alpha blockers: the alpha gate in [`roadmap.md`](roadmap.md#alpha-gate) passe
 
 | Date | Change | Summary |
 |---|---|---|
+| 2026-11-18 | minor | Gap 19: Remove background landed (the user's own Cloudflare Worker, set up from Preferences ▸ AI tools; Restore original). AI features 0% → 5% |
 | 2026-11-12 | minor | Gap 1: the `.fig` export writes vector region paints (#2302); the 2026-10-26 "Landed" bullet no longer says the export drops them |
 | 2026-11-10 | minor | Gap 13: a boolean group's corner radius rounds every sharp corner of its result (#2222); the boolean clause leaves the 2026-10-12 "Left" list |
 | 2026-11-10 | minor | Gap 24: mind maps, first step (`board.mindMap`, `board.mindMapAdd`; the map lays itself out again after every edit, #2226); the toolbar entry, shortcuts, drag to re-parent and `.jam` import are what is missing of them. |

@@ -167,7 +167,11 @@ fn replace(s: &mut Session, p: &Value) -> Result<Value> {
         let at = index.or_else(|| list.iter().rposition(|x| matches!(x.kind, PaintKind::Image(_))));
         let Some(paint) = at.and_then(|i| list.get_mut(i)) else { continue };
         match &mut paint.kind {
-            PaintKind::Image(img) => img.image.clone_from(&image),
+            PaintKind::Image(img) => {
+                img.image.clone_from(&image);
+                // A new picture: Remove background's original belongs to the old one.
+                img.original = None;
+            }
             kind => *kind = Paint::image(image.clone(), ImageScaleMode::Fill).kind,
         }
         // Like any paint edit, the layer leaves its paint style.

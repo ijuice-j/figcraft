@@ -569,6 +569,7 @@ fn the_join_dialog_is_the_same_field() {
 fn the_server_preference_resets_and_turns_online_sharing_off() {
     let (mut h, script) = harness();
     h.app.ui.preferences = true;
+    h.app.ui.prefs_group = crate::dialogs::PrefsGroup::OnlineSharing;
     let shapes = h.frames(2);
     assert!(has_text(&shapes, "Server for online sharing") && has_text(&shapes, "Reset"));
     click(&mut h, &shapes, "Reset");

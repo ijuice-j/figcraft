@@ -256,6 +256,8 @@ mod proto_variant_connect_tests;
 #[cfg(test)]
 mod region_fill_rows_tests;
 #[cfg(test)]
+mod remove_bg_ui_tests;
+#[cfg(test)]
 mod resources_tests;
 #[cfg(test)]
 mod sampled_color_tests;
@@ -341,6 +343,7 @@ pub use dialogs::credits;
 pub use dialogs::import_report;
 pub use dialogs::missing_fonts;
 pub use dialogs::plugins_ui;
+pub use dialogs::remove_bg_ui;
 pub use dialogs::sampled_color;
 pub use dialogs::updates_ui;
 pub use dialogs::variables_panel;
@@ -562,6 +565,12 @@ pub struct UiState {
     /// Files the user opened whose fonts are yet to be checked (by document uid).
     pub font_checks: Vec<u64>,
     pub missing_fonts: Option<missing_fonts::Shown>,
+    /// Preferences ▸ the group shown.
+    pub prefs_group: dialogs::PrefsGroup,
+    /// Preferences ▸ AI tools: connecting a background remover, testing it.
+    pub ai: remove_bg_ui::AiState,
+    /// The card Remove background opens when no remover is connected.
+    pub remove_bg_setup: bool,
     /// The eyedropper's Cmd/Ctrl+Shift pick, to make a colour style or variable of.
     pub sampled_color: Option<sampled_color::SampledColor>,
     pub screenshot_requests: Vec<(u64, String)>,
@@ -735,6 +744,9 @@ impl Default for UiState {
             import_report: None,
             font_checks: Vec::new(),
             missing_fonts: None,
+            prefs_group: Default::default(),
+            ai: Default::default(),
+            remove_bg_setup: false,
             sampled_color: None,
             screenshot_requests: Vec::new(),
             frame_ms: 0.0,

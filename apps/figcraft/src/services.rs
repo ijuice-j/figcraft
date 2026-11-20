@@ -373,6 +373,36 @@ pub(crate) fn write_prefs(dir: &Path, prefs: &Prefs) {
     }
 }
 
+/// The name FigCraft's secrets go under in the system's password store.
+const KEYRING_SERVICE: &str = "FigCraft";
+
+/// Where secrets go when the system has no password store (a Linux desktop without a keyring
+/// service): a file next to the preferences but apart from them: the preferences file is shown and copied in more places (bug reports,
+/// recovery), this one never is. Owner read/write only, like the preferences.
+const SECRETS: &str = "secrets.json";
+
+/// The secrets kept in `dir`, by name (none: an empty object).
+fn read_secrets(dir: &Path) -> serde_json::Map<String, Value> {
+    std::fs::read_to_string(dir.join(SECRETS)).ok().and_then(|t| serde_json::from_str(&t).ok()).unwrap_or_default()
+}
+
+/// Keep `value` as the secret `name` in `dir` (`None`: forget it), replacing the file whole.
+pub(crate) fn write_secret(dir: &Path, name: &str, value: Option<&str>) -> std::io::Result<()> {
+    let mut secrets = read_secrets(dir);
+    match value {
+        Some(v) => {
+            secrets.insert(name.to_string(), Value::String(v.to_string()));
+        }
+        None => {
+            secrets.remove(name);
+        }
+    }
+    let tmp = dir.join("secrets.json.tmp");
+    std::fs::create_dir_all(dir)?;
+    write_private(&tmp, Value::Object(secrets).to_string().as_bytes())?;
+    std::fs::rename(&tmp, dir.join(SECRETS))
+}
+
 /// Write `bytes` to `path`, owner read/write only on Unix from before the first byte (a leftover
 /// file from a crash is narrowed too: the mode given at open only applies to new files).
 fn write_private(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
@@ -542,6 +572,37 @@ impl Services for Desktop {
     fn save_prefs(&mut self, prefs: &Prefs) {
         if let Some(dir) = &self.dir {
             write_prefs(dir, prefs);
+        }
+    }
+    fn secret(&self, name: &str) -> Option<String> {
+        // The password store first; the private file where the system has no store.
+        keyring::Entry::new(KEYRING_SERVICE, name)
+            .and_then(|e| e.get_password())
+            .ok()
+            .or_else(|| read_secrets(self.dir.as_deref()?).get(name)?.as_str().map(str::to_string))
+    }
+    fn set_secret(&mut self, name: &str, value: Option<&str>) -> Result<(), String> {
+        let stored = keyring::Entry::new(KEYRING_SERVICE, name).and_then(|e| match value {
+            Some(v) => e.set_password(v),
+            None => match e.delete_credential() {
+                Err(keyring::Error::NoEntry) => Ok(()),
+                other => other,
+            },
+        });
+        let dir = self.dir.as_deref();
+        match (stored, value) {
+            // Kept in the store: no copy in the file (one from before goes).
+            (Ok(()), _) | (Err(_), None) => {
+                if let Some(dir) = dir.filter(|d| read_secrets(d).contains_key(name)) {
+                    write_secret(dir, name, None).map_err(|e| e.to_string())?;
+                }
+                Ok(())
+            }
+            (Err(store), Some(_)) => {
+                log::info!("secrets: no password store ({store}); keeping {name} in the private file");
+                let dir = dir.ok_or("FigCraft has no settings folder on this computer")?;
+                write_secret(dir, name, value).map_err(|e| e.to_string())
+            }
         }
     }
     fn emergency_save(&mut self, session: &Session) {

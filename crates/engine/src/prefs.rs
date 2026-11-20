@@ -130,6 +130,14 @@ pub struct Prefs {
     /// The workspace the home screen shows and new files go to (one of [`Self::workspaces`]).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub active_workspace: Option<String>,
+    /// Remove background's remover (Preferences ▸ AI tools): the address of the user's Cloudflare
+    /// Worker. Its access key is kept apart, in the system's password store
+    /// ([`SECRET_NAME`](crate::remove_bg::SECRET_NAME)), never here. Empty: none connected.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub remove_bg_address: String,
+    /// The Cloudflare account the remover is in, as Preferences shows it.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub remove_bg_account: String,
 }
 
 /// Recently run actions kept for the Actions palette (newest first).
@@ -174,6 +182,8 @@ impl Default for Prefs {
             team_libraries: Vec::new(),
             workspaces: Vec::new(),
             active_workspace: None,
+            remove_bg_address: String::new(),
+            remove_bg_account: String::new(),
         }
     }
 }

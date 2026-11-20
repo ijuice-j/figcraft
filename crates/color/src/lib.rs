@@ -519,6 +519,10 @@ pub struct ImagePaint {
     pub crop: Option<[f64; 6]>,
     #[serde(default)]
     pub filters: ImageFilters,
+    /// The image this one was made from by Remove background (its key in the document's image
+    /// store), kept so Restore original can put it back. `None` for every other image.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub original: Option<String>,
 }
 
 impl ImagePaint {
@@ -730,6 +734,7 @@ impl Paint {
                 rotation: 0,
                 crop: None,
                 filters: ImageFilters::default(),
+                original: None,
             }),
             opacity: 1.0,
             visible: true,

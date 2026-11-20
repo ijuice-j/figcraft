@@ -60,6 +60,8 @@ fn a_size_is_relative_to_the_systems_scale_on_every_screen_and_auto_is_100() {
 fn the_interface_size_menu_has_a_name_a_value_and_a_state_for_a_screen_reader() {
     let mut u = Ui::new(Session::new());
     u.app.ui.preferences = true;
+    // Interface size is under Appearance.
+    u.app.ui.prefs_group = crate::dialogs::PrefsGroup::Appearance;
     u.ctx.enable_accesskit();
     let combo = |u: &mut Ui| {
         settle(u, 2.0);
@@ -184,6 +186,8 @@ fn the_interface_size_menu_works_from_the_keyboard() {
 
     let mut u = Ui::new(Session::new());
     u.app.ui.preferences = true;
+    // Interface size is under Appearance.
+    u.app.ui.prefs_group = crate::dialogs::PrefsGroup::Appearance;
     u.ctx.enable_accesskit();
     settle(&mut u, 1.0);
     assert_eq!(chosen(&u), json!(1.0));

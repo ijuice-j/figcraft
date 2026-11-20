@@ -91,6 +91,7 @@ fn registry() -> &'static Registry {
         list.extend(crate::cover::specs());
         list.extend(styles::specs());
         list.extend(image::specs());
+        list.extend(crate::remove_bg::specs());
         list.extend(variables::specs());
         list.extend(variables_io::specs());
         list.extend(component::specs());
