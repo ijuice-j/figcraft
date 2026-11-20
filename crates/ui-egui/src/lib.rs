@@ -875,6 +875,8 @@ pub type Done = Box<dyn FnOnce(&mut FigApp, &egui::Context, Value)>;
 
 #[cfg(test)]
 mod selection_spacing_tests;
+#[cfg(test)]
+mod smart_select_group_tests;
 
 #[cfg(test)]
 mod type_settings_tests;

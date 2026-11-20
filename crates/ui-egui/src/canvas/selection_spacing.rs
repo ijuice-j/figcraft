@@ -65,6 +65,9 @@ fn drag_id() -> Id {
     Id::unique("selection_spacing_drag")
 }
 
+/// The drawn radius of a reorder ring (its hit radius is [`ring`]'s).
+pub(crate) const RING_RADIUS: f32 = 5.0;
+
 /// The reorder ring of a layer with world bounds `b`: its centre on screen and hit radius. The
 /// radius is 8 px, at most a quarter of the layer's smaller side on screen, so most of a small
 /// layer still drags the selection; a layer under 16 px on screen has no ring.
@@ -362,10 +365,16 @@ pub fn draw(app: &FigApp, painter: &egui::Painter) {
             let Some((center, r)) = ds.doc.world_bounds(*id).and_then(|b| ring(app, b)) else { continue };
             let hot = hover.is_some_and(|p| center.distance(p) <= r);
             let active = matches!(drag.as_ref().map(|d| &d.action), Some(Action::Reorder { source, .. }) if source == id);
-            if active {
-                painter.circle_filled(center, 4.5, PINK);
+            // A white dot with a pink edge reads on any fill (a photo, a pink or white layer);
+            // hovered or dragged it turns solid pink. The edge is darkened a touch so it shows on
+            // a white canvas too.
+            let edge = Stroke::new(1.0, egui::Color32::from_black_alpha(60));
+            if active || hot {
+                painter.circle(center, RING_RADIUS + 1.0, PINK, Stroke::new(2.0, egui::Color32::WHITE));
+                painter.circle_stroke(center, RING_RADIUS + 2.5, edge);
             } else {
-                painter.circle_stroke(center, 4.5, Stroke::new(if hot { 2.5 } else { 1.5 }, PINK));
+                painter.circle(center, RING_RADIUS, egui::Color32::WHITE, Stroke::new(2.0, PINK));
+                painter.circle_stroke(center, RING_RADIUS + 1.5, edge);
             }
         }
     }
